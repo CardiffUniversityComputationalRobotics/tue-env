@@ -18,10 +18,10 @@ fi
 # Set ROS version
 case $DISTRIB_RELEASE in
     "16.04")
-        ENV_ROS_DISTRO=kinetic
+        IROHMS_ROS_DISTRO=kinetic
         ;;
     "18.04")
-        ENV_ROS_DISTRO=melodic
+        IROHMS_ROS_DISTRO=melodic
         ;;
     *)
         echo "[irohms-env](bootstrap) Ubuntu $DISTRIB_RELEASE is unsupported. Use either 16.04 or 18.04"
@@ -80,13 +80,13 @@ fi
 source ~/.irohms/setup_irohms.bash
 
 # Create ros environment directory
-mkdir -p ~/ros/$ENV_ROS_DISTRO
+mkdir -p ~/ros/$IROHMS_ROS_DISTRO
 
 # Initialize ros environment directory incl. targets
-irohms-env init ros-$ENV_ROS_DISTRO ~/ros/$ENV_ROS_DISTRO https://github.com/juandhv/tue-env-targets.git
+irohms-env init ros-$IROHMS_ROS_DISTRO ~/ros/$IROHMS_ROS_DISTRO https://github.com/juandhv/tue-env-targets.git
 
 # Set the correct ROS version for this environment
-echo "export ENV_ROS_DISTRO=$ENV_ROS_DISTRO" >> ~/ros/$ENV_ROS_DISTRO/.env/setup/user_setup.bash
+echo "export IROHMS_ROS_DISTRO=$IROHMS_ROS_DISTRO" >> ~/ros/$IROHMS_ROS_DISTRO/.env/setup/user_setup.bash
 
 # Add loading of TU/e tools (irohms-env, irohms-get, etc) to bashrc
 # shellcheck disable=SC2088
@@ -98,7 +98,7 @@ source ~/.irohms/setup_irohms.bash' >> ~/.bashrc
 fi
 
 # Set this environment as default
-irohms-env set-default ros-$ENV_ROS_DISTRO
+irohms-env set-default ros-$IROHMS_ROS_DISTRO
 
 # Activate the default environment
 # No need to follow to file which is already checked by CI
