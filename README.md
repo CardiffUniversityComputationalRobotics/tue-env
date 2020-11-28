@@ -1,4 +1,4 @@
-# tue-env
+# irohms-env
 
 Package manager that can be used to install (ROS) dependencies
 
@@ -6,49 +6,49 @@ Package manager that can be used to install (ROS) dependencies
 
 ### Ubuntu 16.04/18.04
 
-Standard tue-env installation with targets from [tue-env-targets](https://github.com/tue-robotics/tue-env-targets)
+Standard irohms-env installation with targets from [irohms-env-targets](https://github.com/juandhv/tue-env-targets)
 
 ```bash
-source <(wget -O - https://raw.githubusercontent.com/tue-robotics/tue-env/master/installer/bootstrap.bash)
-tue-get install tue-dev #or
-tue-get install tue-dev-full #tue-dev plus extra tools
-tue-make
+source <(wget -O - https://raw.githubusercontent.com/juandhv/tue-env/irohms/installer/bootstrap_irohms.bash)
+irohms-get install irohms-dev #or
+irohms-get install irohms-dev-full #irohms-dev plus extra tools
+irohms-make
 source ~/.bashrc
 ```
 
 ### Customization
 
-A customized targets repository can be setup with this package manager (currently only one git repository is supported). If `tue-env` is already installed, to setup the targets repository run:
+A customized targets repository can be setup with this package manager (currently only one git repository is supported). If `irohms-env` is already installed, to setup the targets repository run:
 
 ```bash
-tue-env init-targets [ENVIRONMENT] <targets_repo_git_url>
+irohms-env init-targets [ENVIRONMENT] <targets_repo_git_url>
 ```
 
-else first setup `tue-env` by manually following the procedure in the bootstrap
+else first setup `irohms-env` by manually following the procedure in the bootstrap
 script.
 
 ## Usage
 
-With `tue-get` you can install various targets which mostly are ros packages.
-The list of packages can be seen [here](https://github.com/tue-robotics/tue-env-targets).
+With `irohms-get` you can install various targets which mostly are ros packages.
+The list of packages can be seen [here](https://github.com/juandhv/tue-env-targets).
 
 ```bash
-tue-get install <TARGET_NAME>
+irohms-get install <TARGET_NAME>
 ```
 
 For example, to install a default developement installation for working with
 TU/e robots, run the following command:
 
 ```bash
-tue-get install tue-dev
+irohms-get install irohms-dev
 ```
 
 **Note:** Any ROS package which has a source installation must be built. In the
-current implementation of `tue-get` this doesn't happen automatically. However
-we provide an alias to `catkin build` as `tue-make` which would build the
-`tue-env` workspace.
+current implementation of `irohms-get` this doesn't happen automatically. However
+we provide an alias to `catkin build` as `irohms-make` which would build the
+`irohms-env` workspace.
 
-Upon executing the installation instructions mentioned in the previous section, `~/.tue/setup.bash` is automatically added in `.bashrc`. Sourcing `.bashrc` would make `tue-env` available to the bash session.
+Upon executing the installation instructions mentioned in the previous section, `~/.irohms/setup.bash` is automatically added in `.bashrc`. Sourcing `.bashrc` would make `irohms-env` available to the bash session.
 
 ## Guidelines on creating a new target
 
@@ -62,11 +62,11 @@ A target can consist of the following three files:
 Installation happens in the above order. First `install.yaml` is parsed and the
 instructions in it are executed. Then `install.bash` is executed. This must have
 commands/instructions that cannot be specified in the YAML file. Lastly, the
-`setup` file is sourced in the bash environment by `setup.bash` of tue-env.
+`setup` file is sourced in the bash environment by `setup.bash` of irohms-env.
 
 Any target dependencies that can be specified in `install.yaml` as other targets
 or installable packages must be specified there. They should not be moved to
-`install.bash`as`tue-env` has many controls in place to parse the YAML file.
+`install.bash`as`irohms-env` has many controls in place to parse the YAML file.
 
 Some (parts of) targets are not used for testing, but do take a long time
 to install. Therefore it is prefferable to skip these (parts of) targets
@@ -150,7 +150,7 @@ Both Ubuntu distribution specific as default can be 'null'. Prevered usage is de
 
 #### (Target / System / PIP / PIP2 / PIP3 / PPA / Snap)-now
 
-The default installation method for targets of type `system`, `pip(2/3)`, `ppa` and `snap` is to collect all such targets in a list and install them simultaneously at the end of the `tue-get install` procedure. To install such a dependency immediately for a specific target, use the target type as `X-now`:
+The default installation method for targets of type `system`, `pip(2/3)`, `ppa` and `snap` is to collect all such targets in a list and install them simultaneously at the end of the `irohms-get install` procedure. To install such a dependency immediately for a specific target, use the target type as `X-now`:
 
 ```yaml
 - type: [target/system/pip/pip2/pip3/ppa/snap]-now
@@ -172,34 +172,34 @@ It is preferred to include these `-now` dependencies in `install.yaml`. Only use
   version: [branch/commit/tag] (Optional field)
 ```
 
-### `tue-install` functions for `install.bash`
+### `irohms-install` functions for `install.bash`
 
-The following functions provided with `tue-env` must be preferred over any
+The following functions provided with `irohms-env` must be preferred over any
 generally used methods of installing packages:
 
 | Function Name                   | Description                                                                                    |
 |---------------------------------|------------------------------------------------------------------------------------------------|
-| `tue-install-add-text`          | To add/replace text in a file with `sudo` taken into account                                   |
-| `tue-install-cp`                | Analogous to `cp` but takes `sudo` into account and the source should be relative to target    |
-| `tue-install-dpkg`              | To install a debian dpkg file                                                                  |
-| `tue-install-git`               | To install a git repository                                                                    |
-| `tue-install-pip`               | To add a python pip2 package to a list to be installed at the end (deprecated)                 |
-| `tue-install-pip2`              | To add a python pip2 package to a list to be installed at the end                              |
-| `tue-install-pip3`              | To add a python pip3 package to a list to be installed at the end                              |
-| `tue-install-pip-now`           | To install python pip2 package, but ignores it if already installed (deprecated)               |
-| `tue-install-pip2-now`          | To install python pip2 package, but ignores it if already installed                            |
-| `tue-install-pip3-now`          | To install python pip3 package, but ignores it if already installed                            |
-| `tue-install-ppa`               | To add one PPA/DEB to a list to be added with `apt-add-repository` at the end, before apt-get  |
-| `tue-install-ppa-now`           | To add a PPA/DEB with `apt-add-repository`, use ^ inside of a DEB and spaces between items     |
-| `tue-install-snap`              | To add a snap package to a list to be installed at the end                                     |
-| `tue-install-snap-now`          | To install a snap                                                                              |
-| `tue-install-svn`               | To install a svn repository                                                                    |
-| `tue-install-system`            | To add `deb` package to a list of packages to be installed at the end with `apt-get`           |
-| `tue-install-system-now`        | To install `deb` packages with `apt-get` right away, but ignores it if already installed       |
-| `tue-install-get-releases`      | To get a released asset from a github repository and place it in the requested directory       |
+| `irohms-install-add-text`          | To add/replace text in a file with `sudo` taken into account                                   |
+| `irohms-install-cp`                | Analogous to `cp` but takes `sudo` into account and the source should be relative to target    |
+| `irohms-install-dpkg`              | To install a debian dpkg file                                                                  |
+| `irohms-install-git`               | To install a git repository                                                                    |
+| `irohms-install-pip`               | To add a python pip2 package to a list to be installed at the end (deprecated)                 |
+| `irohms-install-pip2`              | To add a python pip2 package to a list to be installed at the end                              |
+| `irohms-install-pip3`              | To add a python pip3 package to a list to be installed at the end                              |
+| `irohms-install-pip-now`           | To install python pip2 package, but ignores it if already installed (deprecated)               |
+| `irohms-install-pip2-now`          | To install python pip2 package, but ignores it if already installed                            |
+| `irohms-install-pip3-now`          | To install python pip3 package, but ignores it if already installed                            |
+| `irohms-install-ppa`               | To add one PPA/DEB to a list to be added with `apt-add-repository` at the end, before apt-get  |
+| `irohms-install-ppa-now`           | To add a PPA/DEB with `apt-add-repository`, use ^ inside of a DEB and spaces between items     |
+| `irohms-install-snap`              | To add a snap package to a list to be installed at the end                                     |
+| `irohms-install-snap-now`          | To install a snap                                                                              |
+| `irohms-install-svn`               | To install a svn repository                                                                    |
+| `irohms-install-system`            | To add `deb` package to a list of packages to be installed at the end with `apt-get`           |
+| `irohms-install-system-now`        | To install `deb` packages with `apt-get` right away, but ignores it if already installed       |
+| `irohms-install-get-releases`      | To get a released asset from a github repository and place it in the requested directory       |
 
 The input arguments for each of the above mentioned commands can be found by
-simply executing the command in a bash session (provided tue-env is correctly
+simply executing the command in a bash session (provided irohms-env is correctly
 installed).
 
 A general remark about the order of preference of package repositories:
