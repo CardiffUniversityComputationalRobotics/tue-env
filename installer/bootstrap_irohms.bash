@@ -52,10 +52,10 @@ then
             if [ -n "$BRANCH" ]
             then
                 echo -e "[irohms-env](bootstrap) Cloning irohms-env repository (tue-env from juandhv fork) with branch: $BRANCH at commit: $COMMIT"
-                git clone -q --single-branch --branch "$BRANCH" https://github.com/juandhv/tue-env.git ~/.irohms
+                git clone -q --single-branch --branch "$BRANCH" git@github.com:juandhv/tue-env.git ~/.irohms
             else
                 echo -e "[irohms-env](bootstrap) Cloning irohms-env repository (tue-env from juandhv fork) with default branch at commit: $COMMIT"
-                git clone -q --single-branch https://github.com/juandhv/tue-env.git ~/.irohms
+                git clone -q --single-branch git@github.com:juandhv/tue-env.git ~/.irohms
             fi
             git -C ~/.irohms reset --hard "$COMMIT"
         else
@@ -64,14 +64,14 @@ then
         fi
     else
         echo -e "[irohms-env](bootstrap) Testing Pull Request"
-        git clone -q --depth=10 https://github.com/juandhv/tue-env.git ~/.irohms
+        git clone -q --depth=10 git@github.com:juandhv/tue-env.git ~/.irohms
         git -C ~/.irohms fetch origin pull/"$PULL_REQUEST"/merge:PULLREQUEST
         git -C ~/.irohms checkout PULLREQUEST
     fi
 else
     # Update installer
     echo -e "[irohms-env](bootstrap) Cloning irohms-env repository (tue-env from juandhv fork)"
-    git clone --branch irohms https://github.com/juandhv/tue-env.git ~/.irohms
+    git clone --branch irohms git@github.com:juandhv/tue-env.git ~/.irohms
 fi
 
 # Source the installer commands
@@ -83,7 +83,7 @@ source ~/.irohms/setup_irohms.bash
 mkdir -p ~/ros/$IROHMS_ROS_DISTRO
 
 # Initialize ros environment directory incl. targets
-irohms-env init ros-$IROHMS_ROS_DISTRO ~/ros/$IROHMS_ROS_DISTRO https://github.com/juandhv/tue-env-targets.git
+irohms-env init ros-$IROHMS_ROS_DISTRO ~/ros/$IROHMS_ROS_DISTRO git@github.com:juandhv/tue-env-targets.git
 
 # Set the correct ROS version for this environment
 echo "export IROHMS_ROS_DISTRO=$IROHMS_ROS_DISTRO" >> ~/ros/$IROHMS_ROS_DISTRO/.env/setup/user_setup.bash
