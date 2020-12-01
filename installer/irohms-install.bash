@@ -22,8 +22,6 @@ then
 else
     current_url=$(git -C "$IROHMS_DIR" config --get remote.origin.url)
     new_url=$(_irohms_git_https_or_ssh "$current_url")
-    echo "current_url $current_url"
-    echo "new_url $new_url"
 
     if ! grep -q "^git@.*\.git$\|^https://.*\.git$" <<< "$new_url"
     then
