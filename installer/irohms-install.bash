@@ -67,7 +67,7 @@ then
     # shellcheck disable=SC1078,SC1079
     echo """To setup the default irohms-env targets repository do,
 
-irohms-env init-targets https://github.com/juandhv/tue-env-targets.git
+irohms-env init-targets git@github.com:juandhv/tue-env-targets.git
 """
     exit 1
 else

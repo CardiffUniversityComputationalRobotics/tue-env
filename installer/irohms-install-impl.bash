@@ -416,7 +416,7 @@ function irohms-install-hg
     then
         parent_target=$IROHMS_INSTALL_CURRENT_TARGET
         IROHMS_INSTALL_CURRENT_TARGET="hgcfg"
-        irohms-install-git "https://github.com/irohms-robotics/hgconfig.git" "$hgcfg_folder"
+        irohms-install-git "git@github.com/irohms-robotics/hgconfig.git" "$hgcfg_folder"
         IROHMS_INSTALL_CURRENT_TARGET=$parent_target
         if [ -z "$(hg config extensions.hgcfg)" ]
         then
