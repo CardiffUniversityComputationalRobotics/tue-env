@@ -12,7 +12,7 @@ function _function_test
     [[ "$function_missing" == "true" ]] && exit 1
 }
 
-_function_test _git_https_or_ssh
+_function_test _irohms_git_https_or_ssh
 
 # Update installer
 if [ ! -d "$IROHMS_DIR" ]
@@ -21,7 +21,9 @@ then
     exit 1
 else
     current_url=$(git -C "$IROHMS_DIR" config --get remote.origin.url)
-    new_url=$(_git_https_or_ssh "$current_url")
+    new_url=$(_irohms_git_https_or_ssh "$current_url")
+    echo "current_url $current_url"
+    echo "new_url $new_url"
 
     if ! grep -q "^git@.*\.git$\|^https://.*\.git$" <<< "$new_url"
     then
@@ -72,7 +74,7 @@ irohms-env init-targets git@github.com:juandhv/tue-env-targets.git
     exit 1
 else
     current_url=$(git -C "$IROHMS_ENV_TARGETS_DIR" config --get remote.origin.url)
-    new_url=$(_git_https_or_ssh "$current_url")
+    new_url=$(_irohms_git_https_or_ssh "$current_url")
 
     if ! grep -q "^git@.*\.git$\|^https://.*\.git$" <<< "$new_url"
     then

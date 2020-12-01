@@ -11,7 +11,7 @@ function _function_test
     [[ "$function_missing" == "true" ]] && exit 1
 }
 
-_function_test _git_https_or_ssh _git_split_url
+_function_test _irohms_git_https_or_ssh _git_split_url
 
 IROHMS_INSTALL_DEPENDENCIES_DIR=$IROHMS_ENV_DIR/.env/dependencies
 IROHMS_INSTALL_DEPENDENCIES_ON_DIR=$IROHMS_ENV_DIR/.env/dependencies-on
@@ -313,7 +313,7 @@ function irohms-install-git
     local version=$3
 
     # Change url to https/ssh
-    repo=$(_git_https_or_ssh "$repo")
+    repo=$(_irohms_git_https_or_ssh "$repo")
     if ! grep -q "^git@.*\.git$\|^https://.*\.git$" <<< "$repo"
     then
         # shellcheck disable=SC2140
