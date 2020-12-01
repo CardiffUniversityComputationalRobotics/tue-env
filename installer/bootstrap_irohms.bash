@@ -88,6 +88,9 @@ irohms-env init ros-$IROHMS_ROS_DISTRO ~/ros/$IROHMS_ROS_DISTRO git@github.com:j
 # Set the correct ROS version for this environment
 echo "export IROHMS_ROS_DISTRO=$IROHMS_ROS_DISTRO" >> ~/ros/$IROHMS_ROS_DISTRO/.env/setup/user_setup.bash
 
+# Set IROHMS_GIT_USE_SSH to true
+echo "export IROHMS_GIT_USE_SSH=true" >> ~/ros/$IROHMS_ROS_DISTRO/.env/setup/user_setup.bash
+
 # Add loading of TU/e tools (irohms-env, irohms-get, etc) to bashrc
 # shellcheck disable=SC2088
 if ! grep -q '~/.irohms/setup_irohms.bash' ~/.bashrc;
