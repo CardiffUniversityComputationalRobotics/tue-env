@@ -1262,9 +1262,9 @@ do
         --no-test-depend)
             export TUE_INSTALL_TEST_DEPEND="false"
             ;;
-        --branch*)
+        --try-branch* | --branch*)
             # shellcheck disable=SC2001
-            BRANCH=$(echo "$1" | sed -e 's/^[^=]*=//g')
+            BRANCH+=" "$(echo "$1" | sed -e 's/^[^=]*=//g')
             ;;
         --*)
             echo "unknown option $1"
@@ -1281,6 +1281,14 @@ done
 stamp=$(date_stamp)
 INSTALL_DETAILS_FILE=/tmp/tue-get-details-$stamp
 touch "$INSTALL_DETAILS_FILE"
+
+for branch in $BRANCH
+do
+    tue-install-debug "Parsed branch $branch"
+    # Switch tue-env immediately to this branch:
+    _try_branch "$TUE_DIR" "$branch"
+    [[ -n $_try_branch_res ]] && tue-install-info "[tue-env] $_try_branch_res"
+done
 
 # Initialize
 ROS_PACKAGE_INSTALL_DIR=$TUE_SYSTEM_DIR/src
