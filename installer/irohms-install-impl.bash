@@ -1003,12 +1003,22 @@ function _irohms-install-pip-now
 # Needed for backward compatibility
 function irohms-install-pip-now
 {
-    _irohms-install-pip-now "2" "$@"
+	if [ "$IROHMS_ROS_DISTRO" == "noetic" ]
+	then
+	    _irohms-install-pip-now "3" "$@"
+	else
+	    _irohms-install-pip-now "2" "$@"
+	fi
 }
 
 function irohms-install-pip2-now
 {
-    _irohms-install-pip-now "2" "$@"
+	if [ "$IROHMS_ROS_DISTRO" == "noetic" ]
+	then
+	    _irohms-install-pip-now "3" "$@"
+	else
+	    _irohms-install-pip-now "2" "$@"
+	fi
 }
 
 function irohms-install-pip3-now
@@ -1359,8 +1369,14 @@ IROHMS_INSTALL_INFOS=
 # Make sure tools used by this installer are installed
 # Needed for mercurial install:
 # gcc, python-dev, python-docutils, python-pkg-resources, python-setuptools, python-wheel
-irohms-install-system-now git gcc python-pip python-dev python-docutils python-pkg-resources python-setuptools python-wheel \
-python3-pip python3-dev python3-docutils python3-pkg-resources python3-setuptools python3-wheel
+if [ "$IROHMS_ROS_DISTRO" == "noetic" ]
+then
+    irohms-install-system-now git gcc \
+    python3-pip python3-dev python3-docutils python3-pkg-resources python3-setuptools python3-wheel
+else
+    irohms-install-system-now git gcc python-pip python-dev python-docutils python-pkg-resources python-setuptools python-wheel \
+    python3-pip python3-dev python3-docutils python3-pkg-resources python3-setuptools python3-wheel
+fi
 
 irohms-install-pip3-now catkin-pkg PyYAML "mercurial>=5.3"
 
