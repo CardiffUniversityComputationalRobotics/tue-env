@@ -4,7 +4,7 @@ Package manager that can be used to install (ROS) dependencies
 
 ## Installation
 
-### Ubuntu 16.04/18.04
+### Ubuntu 16.04/18.04/20.04
 
 Standard irohms-env installation with targets from [irohms-env-targets](https://github.com/juandhv/tue-env-targets)
 
