@@ -1263,7 +1263,7 @@ do
             export TUE_INSTALL_TEST_DEPEND="false"
             ;;
         --branch*)
-            nobleo-install-info "Usage of --branch is deprecated, switch to --try-branch"
+            tue-install-info "Usage of --branch is deprecated, switch to --try-branch"
             ;;&
         --try-branch* | --branch*)
             # shellcheck disable=SC2001
