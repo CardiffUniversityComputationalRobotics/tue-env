@@ -39,8 +39,3 @@ then
     echo -e "\e[35m\e[1mNo changes in this package, so no need to run CI\e[0m"
     exit 0
 fi
-
-# Use docker environment variables in all exec commands instead of script variables
-# Compile the package
-echo -e "\e[35m\e[1mCompile the package (catkin build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCATKIN_ENABLE_TESTING=OFF)\e[0m"
-docker exec -t tue-env bash -c 'source ~/.bashrc; cd "$TUE_SYSTEM_DIR"/src/"$PACKAGE" && catkin build --this --no-status -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCATKIN_ENABLE_TESTING=OFF'

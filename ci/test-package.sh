@@ -39,11 +39,3 @@ then
     echo -e "\e[35m\e[1mNo changes in this package, so no need to run CI\e[0m"
     exit 0
 fi
-
-# Build test targets
-echo -e "\e[35m\e[1mBuild test targets of this package (catkin build --this --no-deps -DCATKIN_ENABLE_TESTING=ON)\e[0m"
-docker exec -t tue-env bash -c 'source ~/.bashrc; cd "$TUE_SYSTEM_DIR"/src/"$PACKAGE" && catkin build --this --no-status --no-deps -DCATKIN_ENABLE_TESTING=ON'
-
-# Run unit tests
-echo -e "\e[35m\e[1mRun tests on this package (catkin test --this --no-deps -DCATKIN_ENABLE_TESTING=ON)\e[0m"
-docker exec -t tue-env bash -c 'source ~/.bashrc; cd "$TUE_SYSTEM_DIR"/src/"$PACKAGE" && catkin test --this --no-status --no-deps -DCATKIN_ENABLE_TESTING=ON'
