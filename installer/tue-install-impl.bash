@@ -114,19 +114,6 @@ function tue-install-pipe
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function tue-install-target-now
-{
-    tue-install-debug "tue-install-target-now $*"
-
-    local target=$1
-
-    tue-install-debug "calling: tue-install-target $target true"
-    tue-install-target "$target" "true"
-    return $?
-}
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
 function _set_dependencies
 {
     local parent_target=$1
@@ -261,6 +248,19 @@ function tue-install-rosdep
         TUE_INSTALL_CURRENT_TARGET_DIR=$TUE_INSTALL_TARGETS_DIR/$parent_target
         return 0
     fi
+}
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function tue-install-target-now
+{
+    tue-install-debug "tue-install-target-now $*"
+
+    local target=$1
+
+    tue-install-debug "calling: tue-install-target $target true"
+    tue-install-target "$target" "true"
+    return $?
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
