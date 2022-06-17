@@ -80,16 +80,16 @@ def main():
                 if source_type == "svn" or source_type == "git" or source_type == "hg":
                     sub_dir = source.get("sub-dir", ".")
 
-                    command = "irohms-install-ros {0} {1} {2}".format(source_type, source["url"], sub_dir)
+                    command = "cucr-install-ros {0} {1} {2}".format(source_type, source["url"], sub_dir)
                     if "version" in source:
                         command += " {0}".format(source["version"])
                 elif source_type == "system":
-                    command = "irohms-install-ros system {0}".format(source["name"])
+                    command = "cucr-install-ros system {0}".format(source["name"])
                 else:
                     return show_error("Unknown ROS install type: '{0}'".format(source_type))
 
             elif install_type == "svn" or install_type == "git" or install_type == "hg":
-                command = "irohms-install-{0} {1} {2}".format(install_type, install_item["url"], install_item["path"])
+                command = "cucr-install-{0} {1} {2}".format(install_type, install_item["url"], install_item["path"])
                 if "version" in install_item:
                     command += " {0}".format(install_item["version"])
 
@@ -133,7 +133,7 @@ def main():
                     now_cache[install_type].append(pkg_name)
                     continue
 
-                command = "irohms-install-{0} {1}".format(install_type, pkg_name)
+                command = "cucr-install-{0} {1}".format(install_type, pkg_name)
 
             else:
                 return show_error("Unknown install type: '{0}'".format(install_type))
@@ -149,7 +149,7 @@ def main():
 
     for install_type, pkg_list in now_cache.items():
         if pkg_list:
-            command = "irohms-install-{0} {1}".format(install_type, " ".join(pkg_list))
+            command = "cucr-install-{0} {1}".format(install_type, " ".join(pkg_list))
             command = command.replace(" ", "^")
             commands.append(command)
 

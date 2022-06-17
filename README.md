@@ -1,4 +1,4 @@
-# irohms-env
+# cucr-env
 
 Package manager that can be used to install (ROS) dependencies
 
@@ -6,49 +6,49 @@ Package manager that can be used to install (ROS) dependencies
 
 ### Ubuntu 16.04/18.04/20.04
 
-Standard irohms-env installation with targets from [irohms-env-targets](https://github.com/juandhv/tue-env-targets)
+Standard cucr-env installation with targets from [cucr-env-targets](https://github.com/juandhv/tue-env-targets)
 
 ```bash
-source <(wget -O - https://raw.githubusercontent.com/juandhv/tue-env/irohms/installer/bootstrap_irohms.bash)
-irohms-get install irohms-dev #or
-irohms-get install irohms-dev-full #irohms-dev plus extra tools
-irohms-make
+source <(wget -O - https://raw.githubusercontent.com/juandhv/tue-env/cucr/installer/bootstrap_irohms.bash)
+cucr-get install cucr-dev #or
+cucr-get install cucr-dev-full #cucr-dev plus extra tools
+cucr-make
 source ~/.bashrc
 ```
 
 ### Customization
 
-A customized targets repository can be setup with this package manager (currently only one git repository is supported). If `irohms-env` is already installed, to setup the targets repository run:
+A customized targets repository can be setup with this package manager (currently only one git repository is supported). If `cucr-env` is already installed, to setup the targets repository run:
 
 ```bash
-irohms-env init-targets [ENVIRONMENT] <targets_repo_git_url>
+cucr-env init-targets [ENVIRONMENT] <targets_repo_git_url>
 ```
 
-else first setup `irohms-env` by manually following the procedure in the bootstrap
+else first setup `cucr-env` by manually following the procedure in the bootstrap
 script.
 
 ## Usage
 
-With `irohms-get` you can install various targets which mostly are ros packages.
+With `cucr-get` you can install various targets which mostly are ros packages.
 The list of packages can be seen [here](https://github.com/juandhv/tue-env-targets).
 
 ```bash
-irohms-get install <TARGET_NAME>
+cucr-get install <TARGET_NAME>
 ```
 
 For example, to install a default developement installation for working with
 TU/e robots, run the following command:
 
 ```bash
-irohms-get install irohms-dev
+cucr-get install cucr-dev
 ```
 
 **Note:** Any ROS package which has a source installation must be built. In the
-current implementation of `irohms-get` this doesn't happen automatically. However
-we provide an alias to `catkin build` as `irohms-make` which would build the
-`irohms-env` workspace.
+current implementation of `cucr-get` this doesn't happen automatically. However
+we provide an alias to `catkin build` as `cucr-make` which would build the
+`cucr-env` workspace.
 
-Upon executing the installation instructions mentioned in the previous section, `~/.irohms/setup.bash` is automatically added in `.bashrc`. Sourcing `.bashrc` would make `irohms-env` available to the bash session.
+Upon executing the installation instructions mentioned in the previous section, `~/.cucr/setup.bash` is automatically added in `.bashrc`. Sourcing `.bashrc` would make `cucr-env` available to the bash session.
 
 ## Guidelines on creating a new target
 
@@ -62,11 +62,11 @@ A target can consist of the following three files:
 Installation happens in the above order. First `install.yaml` is parsed and the
 instructions in it are executed. Then `install.bash` is executed. This must have
 commands/instructions that cannot be specified in the YAML file. Lastly, the
-`setup` file is sourced in the bash environment by `setup.bash` of irohms-env.
+`setup` file is sourced in the bash environment by `setup.bash` of cucr-env.
 
 Any target dependencies that can be specified in `install.yaml` as other targets
 or installable packages must be specified there. They should not be moved to
-`install.bash`as`irohms-env` has many controls in place to parse the YAML file.
+`install.bash`as`cucr-env` has many controls in place to parse the YAML file.
 
 Some (parts of) targets are not used for testing, but do take a long time
 to install. Therefore it is prefferable to skip these (parts of) targets
@@ -150,7 +150,7 @@ Both Ubuntu distribution specific as default can be 'null'. Prevered usage is de
 
 #### (Target / System / PIP / PIP2 / PIP3 / PPA / Snap)-now
 
-The default installation method for targets of type `system`, `pip(2/3)`, `ppa` and `snap` is to collect all such targets in a list and install them simultaneously at the end of the `irohms-get install` procedure. To install such a dependency immediately for a specific target, use the target type as `X-now`:
+The default installation method for targets of type `system`, `pip(2/3)`, `ppa` and `snap` is to collect all such targets in a list and install them simultaneously at the end of the `cucr-get install` procedure. To install such a dependency immediately for a specific target, use the target type as `X-now`:
 
 ```yaml
 - type: [target/system/pip/pip2/pip3/ppa/snap]-now
@@ -172,34 +172,34 @@ It is preferred to include these `-now` dependencies in `install.yaml`. Only use
   version: [branch/commit/tag] (Optional field)
 ```
 
-### `irohms-install` functions for `install.bash`
+### `cucr-install` functions for `install.bash`
 
-The following functions provided with `irohms-env` must be preferred over any
+The following functions provided with `cucr-env` must be preferred over any
 generally used methods of installing packages:
 
 | Function Name                   | Description                                                                                    |
 |---------------------------------|------------------------------------------------------------------------------------------------|
-| `irohms-install-add-text`          | To add/replace text in a file with `sudo` taken into account                                   |
-| `irohms-install-cp`                | Analogous to `cp` but takes `sudo` into account and the source should be relative to target    |
-| `irohms-install-dpkg`              | To install a debian dpkg file                                                                  |
-| `irohms-install-git`               | To install a git repository                                                                    |
-| `irohms-install-pip`               | To add a python pip2 package to a list to be installed at the end (deprecated)                 |
-| `irohms-install-pip2`              | To add a python pip2 package to a list to be installed at the end                              |
-| `irohms-install-pip3`              | To add a python pip3 package to a list to be installed at the end                              |
-| `irohms-install-pip-now`           | To install python pip2 package, but ignores it if already installed (deprecated)               |
-| `irohms-install-pip2-now`          | To install python pip2 package, but ignores it if already installed                            |
-| `irohms-install-pip3-now`          | To install python pip3 package, but ignores it if already installed                            |
-| `irohms-install-ppa`               | To add one PPA/DEB to a list to be added with `apt-add-repository` at the end, before apt-get  |
-| `irohms-install-ppa-now`           | To add a PPA/DEB with `apt-add-repository`, use ^ inside of a DEB and spaces between items     |
-| `irohms-install-snap`              | To add a snap package to a list to be installed at the end                                     |
-| `irohms-install-snap-now`          | To install a snap                                                                              |
-| `irohms-install-svn`               | To install a svn repository                                                                    |
-| `irohms-install-system`            | To add `deb` package to a list of packages to be installed at the end with `apt-get`           |
-| `irohms-install-system-now`        | To install `deb` packages with `apt-get` right away, but ignores it if already installed       |
-| `irohms-install-get-releases`      | To get a released asset from a github repository and place it in the requested directory       |
+| `cucr-install-add-text`          | To add/replace text in a file with `sudo` taken into account                                   |
+| `cucr-install-cp`                | Analogous to `cp` but takes `sudo` into account and the source should be relative to target    |
+| `cucr-install-dpkg`              | To install a debian dpkg file                                                                  |
+| `cucr-install-git`               | To install a git repository                                                                    |
+| `cucr-install-pip`               | To add a python pip2 package to a list to be installed at the end (deprecated)                 |
+| `cucr-install-pip2`              | To add a python pip2 package to a list to be installed at the end                              |
+| `cucr-install-pip3`              | To add a python pip3 package to a list to be installed at the end                              |
+| `cucr-install-pip-now`           | To install python pip2 package, but ignores it if already installed (deprecated)               |
+| `cucr-install-pip2-now`          | To install python pip2 package, but ignores it if already installed                            |
+| `cucr-install-pip3-now`          | To install python pip3 package, but ignores it if already installed                            |
+| `cucr-install-ppa`               | To add one PPA/DEB to a list to be added with `apt-add-repository` at the end, before apt-get  |
+| `cucr-install-ppa-now`           | To add a PPA/DEB with `apt-add-repository`, use ^ inside of a DEB and spaces between items     |
+| `cucr-install-snap`              | To add a snap package to a list to be installed at the end                                     |
+| `cucr-install-snap-now`          | To install a snap                                                                              |
+| `cucr-install-svn`               | To install a svn repository                                                                    |
+| `cucr-install-system`            | To add `deb` package to a list of packages to be installed at the end with `apt-get`           |
+| `cucr-install-system-now`        | To install `deb` packages with `apt-get` right away, but ignores it if already installed       |
+| `cucr-install-get-releases`      | To get a released asset from a github repository and place it in the requested directory       |
 
 The input arguments for each of the above mentioned commands can be found by
-simply executing the command in a bash session (provided irohms-env is correctly
+simply executing the command in a bash session (provided cucr-env is correctly
 installed).
 
 A general remark about the order of preference of package repositories:

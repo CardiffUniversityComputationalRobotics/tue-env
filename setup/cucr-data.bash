@@ -4,7 +4,7 @@ LOCAL_DATA_DIR=~/ros/data
 ROBOTICSSRV_LOGIN=data@roboticssrv.wtb.tue.nl
 REMOTE_DATA_DIR=/home/data/data
 
-function irohms-data
+function cucr-data
 {
     # Temporary check
     if [ -d ~/ros/data ] && [ ! -d ~/ros/data/private ]
@@ -20,9 +20,9 @@ function irohms-data
     if [ -z "$1" ]
     then
         # shellcheck disable=SC1078,SC1079
-        echo """irohms-data is a tool for uploading data to and downloading data from the TU/e robotics server.
+        echo """cucr-data is a tool for uploading data to and downloading data from the TU/e robotics server.
 
-    Usage: irohms-data COMMAND [ARG1 ARG2 ...]
+    Usage: cucr-data COMMAND [ARG1 ARG2 ...]
 
     Possible commands:
 
@@ -72,11 +72,11 @@ function irohms-data
         if [ -z "$1" ]
         then
             # shellcheck disable=SC1078,SC1079
-            echo """Usage: irohms-data store <FILE-OR-FOLDER>
+            echo """Usage: cucr-data store <FILE-OR-FOLDER>
 
 For example, to store everything in the current folder, use:
 
-    irohms-data store .
+    cucr-data store .
 """
             return 1
         fi
@@ -110,4 +110,4 @@ function _irohms-data
         mapfile -t COMPREPLY < <(compgen -W "update-dirs list update store" -- "$cur")
     fi
 }
-complete -F _irohms-data irohms-data
+complete -F _irohms-data cucr-data

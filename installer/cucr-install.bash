@@ -17,7 +17,7 @@ _function_test _irohms_git_https_or_ssh
 # Update installer
 if [ ! -d "$IROHMS_DIR" ]
 then
-    echo "[irohms-get] 'IROHMS_DIR' $IROHMS_DIR doesn't exist"
+    echo "[cucr-get] 'IROHMS_DIR' $IROHMS_DIR doesn't exist"
     exit 1
 else
     current_url=$(git -C "$IROHMS_DIR" config --get remote.origin.url)
@@ -26,7 +26,7 @@ else
     if ! grep -q "^git@.*\.git$\|^https://.*\.git$" <<< "$new_url"
     then
         # shellcheck disable=SC2140
-        echo -e "[irohms-get] (irohms-env) new_url: '$new_url' is invalid. It is generated from the current_url: '$current_url'\n"\
+        echo -e "[cucr-get] (cucr-env) new_url: '$new_url' is invalid. It is generated from the current_url: '$current_url'\n"\
 "The problem will probably be solved by resourcing the setup"
         exit 1
     fi
@@ -35,22 +35,22 @@ else
     if [ "$current_url" != "$new_url" ]
     then
         git -C "$IROHMS_DIR" remote set-url origin "$new_url"
-        echo -e "[irohms-get] Origin has switched to $new_url"
+        echo -e "[cucr-get] Origin has switched to $new_url"
     fi
 
     if [[ -n "$CI" ]]
     then
         # Do not update with continuous integration but do fetch to refresh available branches
-        echo -e "[irohms-get] Fetching irohms-get... "
+        echo -e "[cucr-get] Fetching cucr-get... "
         git -C "$IROHMS_DIR" fetch
     else
-        echo -en "[irohms-get] Updating irohms-get... "
+        echo -en "[cucr-get] Updating cucr-get... "
 
         if ! git -C "$IROHMS_DIR" pull --ff-only --prune
         then
             # prompt for conformation
             exec < /dev/tty
-            read -p "[irohms-get] Could not update irohms-get. Continue? " -n 1 -r
+            read -p "[cucr-get] Could not update cucr-get. Continue? " -n 1 -r
             exec <&-
             echo    # (optional) move to a new line
             if [[ ! $REPLY =~ ^[Yy]$ ]]
@@ -63,11 +63,11 @@ fi
 
 if [ ! -d "$IROHMS_ENV_TARGETS_DIR" ]
 then
-    echo "[irohms-get] 'IROHMS_ENV_TARGETS_DIR' $IROHMS_ENV_TARGETS_DIR doesn't exist"
+    echo "[cucr-get] 'IROHMS_ENV_TARGETS_DIR' $IROHMS_ENV_TARGETS_DIR doesn't exist"
     # shellcheck disable=SC1078,SC1079
-    echo """To setup the default irohms-env targets repository do,
+    echo """To setup the default cucr-env targets repository do,
 
-irohms-env init-targets git@github.com:juandhv/tue-env-targets.git
+cucr-env init-targets git@github.com:juandhv/tue-env-targets.git
 """
     exit 1
 else
@@ -77,7 +77,7 @@ else
     if ! grep -q "^git@.*\.git$\|^https://.*\.git$" <<< "$new_url"
     then
         # shellcheck disable=SC2140
-        echo -e "[irohms-get] (irohms-env-targets) new_url: '$new_url' is invalid. It is generated from the current_url: '$current_url'\n"\
+        echo -e "[cucr-get] (cucr-env-targets) new_url: '$new_url' is invalid. It is generated from the current_url: '$current_url'\n"\
 "The problem will probably be solved by resourcing the setup"
         exit 1
     fi
@@ -85,16 +85,16 @@ else
     if [ "$current_url" != "$new_url" ]
     then
         git -C "$IROHMS_ENV_TARGETS_DIR" remote set-url origin "$new_url"
-        echo -e "[irohms-env-targets] Origin has switched to $new_url"
+        echo -e "[cucr-env-targets] Origin has switched to $new_url"
     fi
 
-    echo -en "[irohms-env-targets] Updating targets... "
+    echo -en "[cucr-env-targets] Updating targets... "
 
     if ! { git -C "$IROHMS_ENV_TARGETS_DIR" pull --ff-only --prune && git -C "$IROHMS_ENV_TARGETS_DIR" submodule sync --recursive 1>/dev/null && git -C "$IROHMS_ENV_TARGETS_DIR" submodule update --init --recursive; } && [ -z "$CI" ]
     then
         # prompt for conformation
         exec < /dev/tty
-        read -p "[irohms-env-targets] Could not update targets. Continue? " -n 1 -r
+        read -p "[cucr-env-targets] Could not update targets. Continue? " -n 1 -r
         exec <&-
         echo    # (optional) move to a new line
         if [[ ! $REPLY =~ ^[Yy]$ ]]
@@ -118,7 +118,7 @@ then
 
     if [ -n "$BRANCH" ]
     then
-        echo -en "[irohms-env-targets] Trying to switch to branch $BRANCH..."
+        echo -en "[cucr-env-targets] Trying to switch to branch $BRANCH..."
         current_branch=$(git -C "$IROHMS_ENV_TARGETS_DIR" rev-parse --abbrev-ref HEAD)
 
         if git -C "$IROHMS_ENV_TARGETS_DIR" rev-parse --quiet --verify origin/"$BRANCH" 1>/dev/null
@@ -134,11 +134,11 @@ then
             fi
         else
             echo # (Optional) move to a new line
-            echo -e "[irohms-env-targets] Branch '$BRANCH' does not exist. Current branch is $current_branch"
+            echo -e "[cucr-env-targets] Branch '$BRANCH' does not exist. Current branch is $current_branch"
         fi
     fi
 fi
 
 # Run installer
 # shellcheck disable=SC1090
-source "$IROHMS_DIR"/installer/irohms-install-impl.bash "$@"
+source "$IROHMS_DIR"/installer/cucr-install-impl.bash "$@"
