@@ -1,8 +1,8 @@
 #! /usr/bin/env bash
 
-#  - IROHMS-GET: tool voor het weergeven van dependencies (a la rospack depends*)
+#  - CUCR-GET: tool voor het weergeven van dependencies (a la rospack depends*)
 #     - Extra handig: aangeven via welke weg A en B van elkaar afhangen
-#     - Bijv: irohms-get dep A B --level 1       (Waarbij A en B ook ? of * mogen zijn)
+#     - Bijv: cucr-get dep A B --level 1       (Waarbij A en B ook ? of * mogen zijn)
 
 hash xmlstarlet 2> /dev/null || sudo apt-get install --assume-yes -qq xmlstarlet
 
@@ -86,9 +86,9 @@ do
     case "$1" in
         --help|-h)
             # shellcheck disable=SC1078,SC1079
-            echo """[irohms-get dep] shows dependencies of one target (to another target)
+            echo """[cucr-get dep] shows dependencies of one target (to another target)
 
-    Usage: irohms-get dep TARGET_FROM [ TARGET_TO ]
+    Usage: cucr-get dep TARGET_FROM [ TARGET_TO ]
 
     Possible options:
         --plain        - Show flat output, usefull for parsing later

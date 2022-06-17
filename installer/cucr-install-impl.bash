@@ -41,7 +41,7 @@ function version_gt()
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-error
+function cucr-install-error
 {
     echo -e "\033[38;5;1m
 Error while installing target '$IROHMS_INSTALL_CURRENT_TARGET':
@@ -53,7 +53,7 @@ Error while installing target '$IROHMS_INSTALL_CURRENT_TARGET':
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-warning
+function cucr-install-warning
 {
     echo -e "\033[33;5;1m[$IROHMS_INSTALL_CURRENT_TARGET] WARNING: $*\033[0m" | tee --append "$INSTALL_DETAILS_FILE"
     IROHMS_INSTALL_WARNINGS="    [$IROHMS_INSTALL_CURRENT_TARGET] $*\n${IROHMS_INSTALL_WARNINGS}"
@@ -61,7 +61,7 @@ function irohms-install-warning
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-info
+function cucr-install-info
 {
     echo -e "\e[0;36m[$IROHMS_INSTALL_CURRENT_TARGET] INFO: $*\033[0m"  | tee --append "$INSTALL_DETAILS_FILE"
     IROHMS_INSTALL_INFOS="    [$IROHMS_INSTALL_CURRENT_TARGET] $*\n${IROHMS_INSTALL_INFOS}"
@@ -69,7 +69,7 @@ function irohms-install-info
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-debug
+function cucr-install-debug
 {
     if [ "$DEBUG" = "true" ]
     then
@@ -81,32 +81,32 @@ function irohms-install-debug
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-target-now
+function cucr-install-target-now
 {
-    irohms-install-debug "irohms-install-target-now $*"
+    cucr-install-debug "cucr-install-target-now $*"
 
     local target=$1
 
-    irohms-install-debug "calling: irohms-install-target $target true"
-    irohms-install-target "$target" "true"
+    cucr-install-debug "calling: cucr-install-target $target true"
+    cucr-install-target "$target" "true"
     return $?
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-target
+function cucr-install-target
 {
-    irohms-install-debug "irohms-install-target $*"
+    cucr-install-debug "cucr-install-target $*"
 
     local target=$1
     local now=$2
 
-    irohms-install-debug "Installing target: $target"
+    cucr-install-debug "Installing target: $target"
 
     # Check if valid target received as input
     if [ ! -d "$IROHMS_INSTALL_TARGETS_DIR"/"$target" ]
     then
-        irohms-install-debug "Target '$target' does not exist."
+        cucr-install-debug "Target '$target' does not exist."
         return 1
     fi
 
@@ -134,38 +134,38 @@ function irohms-install-target
 
     if [[ "$CI" == "true" ]] && [[ -f "$IROHMS_INSTALL_CURRENT_TARGET_DIR"/.ci_ignore ]]
     then
-        irohms-install-debug "Running installer in CI mode and file $IROHMS_INSTALL_CURRENT_TARGET_DIR/.ci_ignore exists. No execution is needed"
+        cucr-install-debug "Running installer in CI mode and file $IROHMS_INSTALL_CURRENT_TARGET_DIR/.ci_ignore exists. No execution is needed"
         execution_needed="false"
     elif [ -f "$state_file_now" ]
     then
-        irohms-install-debug "File $state_file_now does exist, so installation has already been executed with 'now' option. No execution is needed"
+        cucr-install-debug "File $state_file_now does exist, so installation has already been executed with 'now' option. No execution is needed"
         execution_needed="false"
     elif [ -f "$state_file" ]
     then
         if [ "$now" == "true" ]
         then
-            irohms-install-debug "File $state_file_now doesn't exist, but file $state_file does. So installation has been executed yet, but not with the 'now' option. Going to execute it with 'now' option."
+            cucr-install-debug "File $state_file_now doesn't exist, but file $state_file does. So installation has been executed yet, but not with the 'now' option. Going to execute it with 'now' option."
         else
-            irohms-install-debug "File $state_file_now does exist. 'now' is not enabled, so no execution needed."
+            cucr-install-debug "File $state_file_now does exist. 'now' is not enabled, so no execution needed."
             execution_needed="false"
         fi
     else
         if [ "$now" == "true" ]
         then
-            irohms-install-debug "Files $state_file_now and $state_file don't exist. Going to execute with 'now' option."
+            cucr-install-debug "Files $state_file_now and $state_file don't exist. Going to execute with 'now' option."
         else
-            irohms-install-debug "Files $state_file_now and $state_file don't exist. Going to execute without 'now' option."
+            cucr-install-debug "Files $state_file_now and $state_file don't exist. Going to execute without 'now' option."
         fi
     fi
 
     if [ "$execution_needed" == "true" ]
     then
-        irohms-install-debug "Starting installation"
+        cucr-install-debug "Starting installation"
 
         local install_file=$IROHMS_INSTALL_CURRENT_TARGET_DIR/install
 
         # Empty the target's dependency file
-        irohms-install-debug "Emptying $IROHMS_INSTALL_DEPENDENCIES_DIR/$target"
+        cucr-install-debug "Emptying $IROHMS_INSTALL_DEPENDENCIES_DIR/$target"
         truncate -s 0 "$IROHMS_INSTALL_DEPENDENCIES_DIR"/"$target"
         local target_processed=false
 
@@ -173,10 +173,10 @@ function irohms-install-target
         then
             if [[ "$CI" == "true" ]] && [[ -f "$IROHMS_INSTALL_CURRENT_TARGET_DIR"/.ci_ignore_yaml ]]
             then
-                irohms-install-debug "Running in CI mode and found .ci_ignore_yaml file, so skipping install.yaml"
+                cucr-install-debug "Running in CI mode and found .ci_ignore_yaml file, so skipping install.yaml"
                 target_processed=true
             else
-                irohms-install-debug "Parsing $install_file.yaml"
+                cucr-install-debug "Parsing $install_file.yaml"
                 local now_cmd=""
                 [ "$now" == "true" ] && now_cmd="--now"
                 # Do not use 'local cmds=' because it does not preserve command output status ($?)
@@ -185,12 +185,12 @@ function irohms-install-target
                 then
                     for cmd in $cmds
                     do
-                        irohms-install-debug "Running following command: ${cmd//^/ }"
-                        ${cmd//^/ } || irohms-install-error "Error while running: ${cmd//^/ }"
+                        cucr-install-debug "Running following command: ${cmd//^/ }"
+                        ${cmd//^/ } || cucr-install-error "Error while running: ${cmd//^/ }"
                     done
                     target_processed=true
                 else
-                    irohms-install-error "Invalid install.yaml: $cmds"
+                    cucr-install-error "Invalid install.yaml: $cmds"
                 fi
             fi
         fi
@@ -199,9 +199,9 @@ function irohms-install-target
         then
             if [[ "$CI" == "true" ]] && [[ -f "$IROHMS_INSTALL_CURRENT_TARGET_DIR"/.ci_ignore_bash ]]
             then
-                irohms-install-debug "Running in CI mode and found .ci_ignore_bash file, so skipping install.bash"
+                cucr-install-debug "Running in CI mode and found .ci_ignore_bash file, so skipping install.bash"
             else
-                irohms-install-debug "Sourcing $install_file.bash"
+                cucr-install-debug "Sourcing $install_file.bash"
                 # shellcheck disable=SC1090
                 source "$install_file".bash
             fi
@@ -210,7 +210,7 @@ function irohms-install-target
 
         if [ "$target_processed" == false ]
         then
-            irohms-install-warning "Target $target does not contain a valid install.yaml/bash file"
+            cucr-install-warning "Target $target does not contain a valid install.yaml/bash file"
         fi
 
         if [ "$now" == "true" ]
@@ -225,7 +225,7 @@ function irohms-install-target
     IROHMS_INSTALL_CURRENT_TARGET=$parent_target
     IROHMS_INSTALL_CURRENT_TARGET_DIR=$IROHMS_INSTALL_TARGETS_DIR/$parent_target
 
-    irohms-install-debug "Finished installing $target"
+    cucr-install-debug "Finished installing $target"
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -247,11 +247,11 @@ function _show_update_message
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-svn
+function cucr-install-svn
 {
-    irohms-install-debug "irohms-install-svn $*"
+    cucr-install-debug "cucr-install-svn $*"
 
-    irohms-install-system-now subversion
+    cucr-install-system-now subversion
     local res
     if [ ! -d "$2" ]
     then
@@ -271,27 +271,27 @@ function irohms-install-svn
 
 function _try_branch_git
 {
-    irohms-install-debug "_try_branch_git $*"
+    cucr-install-debug "_try_branch_git $*"
 
     if [ -z "$2" ]
     then
-        irohms-install-error "Invalid _try_branch_git: needs two arguments (repo and branch)."
+        cucr-install-error "Invalid _try_branch_git: needs two arguments (repo and branch)."
     fi
 
-    irohms-install-debug "git -C $1 checkout $2"
-    _try_branch_res=$(git -C "$1" checkout "$2" 2>&1) # This is a "global" variable from irohms-install-git
-    irohms-install-debug "_try_branch_res: $_try_branch_res"
+    cucr-install-debug "git -C $1 checkout $2"
+    _try_branch_res=$(git -C "$1" checkout "$2" 2>&1) # This is a "global" variable from cucr-install-git
+    cucr-install-debug "_try_branch_res: $_try_branch_res"
 
     local _submodule_sync_res _submodule_sync_error_code
-    irohms-install-debug "git -C $1 submodule sync --recursive"
+    cucr-install-debug "git -C $1 submodule sync --recursive"
     _submodule_sync_res=$(git -C "$1" submodule sync --recursive 2>&1)
     _submodule_sync_error_code=$?
-    irohms-install-debug "_submodule_sync_res: $_submodule_sync_res"
+    cucr-install-debug "_submodule_sync_res: $_submodule_sync_res"
 
     local _submodule_res
-    irohms-install-debug "git -C $1 submodule update --init --recursive"
+    cucr-install-debug "git -C $1 submodule update --init --recursive"
     _submodule_res=$(git -C "$1" submodule update --init --recursive 2>&1)
-    irohms-install-debug "_submodule_res: $_submodule_res"
+    cucr-install-debug "_submodule_res: $_submodule_res"
 
     if [[ $_try_branch_res == "Already on "* || $_try_branch_res == "error: pathspec"* ]]
     then
@@ -303,9 +303,9 @@ function _try_branch_git
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-git
+function cucr-install-git
 {
-    irohms-install-debug "irohms-install-git $*"
+    cucr-install-debug "cucr-install-git $*"
 
     local repo=$1
     local repo_pre="$repo"
@@ -317,20 +317,20 @@ function irohms-install-git
     if ! grep -q "^git@.*\.git$\|^https://.*\.git$" <<< "$repo"
     then
         # shellcheck disable=SC2140
-        irohms-install-error "repo: '$repo' is invalid. It is generated from: '$repo_pre'\n"\
+        cucr-install-error "repo: '$repo' is invalid. It is generated from: '$repo_pre'\n"\
 "The problem will probably be solved by resourcing the setup"
     fi
 
     if [ ! -d "$targetdir" ]
     then
-        irohms-install-debug "git clone --recursive $repo $targetdir"
+        cucr-install-debug "git clone --recursive $repo $targetdir"
         res=$(git clone --recursive "$repo" "$targetdir" 2>&1)
         IROHMS_INSTALL_GIT_PULL_Q+=$targetdir
     else
         # Check if we have already pulled the repo
         if [[ $IROHMS_INSTALL_GIT_PULL_Q =~ $targetdir ]]
         then
-            irohms-install-debug "Repo previously pulled, skipping"
+            cucr-install-debug "Repo previously pulled, skipping"
             # We have already pulled this repo, skip it
             res=
         else
@@ -342,29 +342,29 @@ function irohms-install-git
             # If different, switch url
             if [ "$current_url" != "$repo" ]
             then
-                irohms-install-debug "git -C $targetdir remote set-url origin $repo"
+                cucr-install-debug "git -C $targetdir remote set-url origin $repo"
                 git -C "$targetdir" remote set-url origin "$repo"
-                irohms-install-info "URL has switched to $repo"
+                cucr-install-info "URL has switched to $repo"
             fi
 
             local res
-            irohms-install-debug "git -C $targetdir pull --ff-only --prune"
+            cucr-install-debug "git -C $targetdir pull --ff-only --prune"
             res=$(git -C "$targetdir" pull --ff-only --prune 2>&1)
-            irohms-install-debug "res: $res"
+            cucr-install-debug "res: $res"
 
             IROHMS_INSTALL_GIT_PULL_Q+=$targetdir
 
             local submodule_sync_res submodule_sync_error_code
-            irohms-install-debug "git -C $targetdir submodule sync --recursive"
+            cucr-install-debug "git -C $targetdir submodule sync --recursive"
             submodule_sync_res=$(git -C "$targetdir" submodule sync --recursive)
             submodule_sync_error_code=$?
-            irohms-install-debug "submodule_sync_res: $submodule_sync_res"
+            cucr-install-debug "submodule_sync_res: $submodule_sync_res"
             [ "$submodule_sync_error_code" -gt 0 ] && [ -n "$submodule_sync_res" ] && res="${res:+${res} }$submodule_sync_res"
 
             local submodule_res
-            irohms-install-debug "git -C $targetdir submodule update --init --recursive"
+            cucr-install-debug "git -C $targetdir submodule update --init --recursive"
             submodule_res=$(git -C "$targetdir" submodule update --init --recursive 2>&1)
-            irohms-install-debug "submodule_res: $submodule_res"
+            cucr-install-debug "submodule_res: $submodule_res"
             [ -n "$submodule_res" ] && res="${res:+${res} }$submodule_res"
 
             if [ "$res" == "Already up to date." ]
@@ -374,7 +374,7 @@ function irohms-install-git
         fi
     fi
 
-    irohms-install-debug "Desired version: $version"
+    cucr-install-debug "Desired version: $version"
     local _try_branch_res # Will be used in _try_branch_git
     local version_cache_file="$IROHMS_ENV_DIR/.env/version_cache/$targetdir"
     if [ -n "$version" ]
@@ -388,7 +388,7 @@ function irohms-install-git
         rm "$version_cache_file" 2>/dev/null
     fi
 
-    irohms-install-debug "Desired branch: $BRANCH"
+    cucr-install-debug "Desired branch: $BRANCH"
     if [ -n "$BRANCH" ] # Cannot be combined with version-if because this one might not exist
     then
         _try_branch_res=""
@@ -401,9 +401,9 @@ function irohms-install-git
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-hg
+function cucr-install-hg
 {
-    irohms-install-debug "irohms-install-hg $*"
+    cucr-install-debug "cucr-install-hg $*"
 
     local repo=$1
     local targetdir=$2
@@ -416,7 +416,7 @@ function irohms-install-hg
     then
         parent_target=$IROHMS_INSTALL_CURRENT_TARGET
         IROHMS_INSTALL_CURRENT_TARGET="hgcfg"
-        irohms-install-git "https://github.com/irohms-robotics/hgconfig.git" "$hgcfg_folder"
+        cucr-install-git "git@github.com/cucr-robotics/hgconfig.git" "$hgcfg_folder"
         IROHMS_INSTALL_CURRENT_TARGET=$parent_target
         if [ -z "$(hg config extensions.hgcfg)" ]
         then
@@ -429,14 +429,14 @@ function irohms-install-hg
 
     if [ ! -d "$targetdir" ]
     then
-        irohms-install-debug "hg clone $repo $targetdir"
+        cucr-install-debug "hg clone $repo $targetdir"
         res=$(hg clone "$repo" "$targetdir" 2>&1)
         IROHMS_INSTALL_HG_PULL_Q+=$targetdir
     else
         # Check if we have already pulled the repo
         if [[ $IROHMS_INSTALL_HG_PULL_Q =~ $targetdir ]]
         then
-            irohms-install-debug "Repo previously pulled, skipping"
+            cucr-install-debug "Repo previously pulled, skipping"
             # We have already pulled this repo, skip it
             res=
         else
@@ -448,17 +448,17 @@ function irohms-install-hg
             # If different, switch url
             if [ "$current_url" != "$repo" ]
             then
-                irohms-install-debug "hg -R $targetdir config paths.default $repo"
+                cucr-install-debug "hg -R $targetdir config paths.default $repo"
                 hg -R "$targetdir" config paths.default "$repo"
-                irohms-install-info "URL has switched to $repo"
+                cucr-install-info "URL has switched to $repo"
             fi
 
-            irohms-install-debug "hg -R $targetdir pull -u"
+            cucr-install-debug "hg -R $targetdir pull -u"
 
             local res
             res=$(hg -R "$targetdir" pull -u 2>&1)
 
-            irohms-install-debug "$res"
+            cucr-install-debug "$res"
 
             IROHMS_INSTALL_HG_PULL_Q+=$targetdir
 
@@ -469,7 +469,7 @@ function irohms-install-hg
         fi
     fi
 
-    irohms-install-debug "Desired version: $version"
+    cucr-install-debug "Desired version: $version"
     local _try_branch_res # Will be used in _try_branch_hg
     if [ -n "$version" ]
     then
@@ -478,7 +478,7 @@ function irohms-install-hg
         [ -n "$_try_branch_res" ] && res="${res:+${res} }$_try_branch_res"
     fi
 
-    irohms-install-debug "Desired branch: $BRANCH"
+    cucr-install-debug "Desired branch: $BRANCH"
     if [ -n "$BRANCH" ] # Cannot be combined with version-if because this one might not exist
     then
         _try_branch_res=""
@@ -493,16 +493,16 @@ function irohms-install-hg
 
 function _try_branch_hg
 {
-    irohms-install-debug "_try_branch_hg $*"
+    cucr-install-debug "_try_branch_hg $*"
 
     if [ -z "$2" ]
     then
-        irohms-install-error "Invalid _try_branch_hg: needs two arguments (repo and branch)."
+        cucr-install-error "Invalid _try_branch_hg: needs two arguments (repo and branch)."
     fi
 
-    irohms-install-debug "hg -R $1 checkout $2"
-    _try_branch_res=$(hg -R "$1" checkout "$2" 2>&1) # This is a "global" variable from irohms-install-hg
-    irohms-install-debug "_try_branch_res: $_try_branch_res"
+    cucr-install-debug "hg -R $1 checkout $2"
+    _try_branch_res=$(hg -R "$1" checkout "$2" 2>&1) # This is a "global" variable from cucr-install-hg
+    cucr-install-debug "_try_branch_res: $_try_branch_res"
     if [[ $_try_branch_res == "1 files updated, 0 files merged, 1 files removed, 0 files unresolved" || $_try_branch_res == "abort: unknown revision"* ]]
     then
         _try_branch_res=
@@ -512,25 +512,25 @@ function _try_branch_hg
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-apply-patch
+function cucr-install-apply-patch
 {
-    irohms-install-debug "irohms-install-apply-patch $*"
+    cucr-install-debug "cucr-install-apply-patch $*"
 
     if [ -z "$1" ]
     then
-        irohms-install-error "Invalid irohms-install-apply-patch call: needs patch file as argument."
+        cucr-install-error "Invalid cucr-install-apply-patch call: needs patch file as argument."
     fi
 
     if [ -z "$IROHMS_INSTALL_PKG_DIR" ]
     then
-        irohms-install-error "Invalid irohms-install-apply-patch call: package directory is unknown."
+        cucr-install-error "Invalid cucr-install-apply-patch call: package directory is unknown."
     fi
 
     patch_file=$IROHMS_INSTALL_CURRENT_TARGET_DIR/$1
 
     if [ ! -f "$patch_file" ]
     then
-        irohms-install-error "Invalid irohms-install-apply-patch call: patch file '$1' does not exist."
+        cucr-install-error "Invalid cucr-install-apply-patch call: patch file '$1' does not exist."
     fi
 
     patch -s -N -r - -p0 -d "$IROHMS_INSTALL_PKG_DIR" < "$patch_file"
@@ -538,14 +538,14 @@ function irohms-install-apply-patch
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-cp
+function cucr-install-cp
 {
-    irohms-install-debug "irohms-install-cp $*"
+    cucr-install-debug "cucr-install-cp $*"
 
     if [ -z "$2" ]
     then
-        irohms-install-error "Invalid irohms-install-cp call: needs two arguments (source and target). The source must be relative to the installer target directory
-Command: irohms-install-cp $*"
+        cucr-install-error "Invalid cucr-install-cp call: needs two arguments (source and target). The source must be relative to the installer target directory
+Command: cucr-install-cp $*"
     fi
 
     local source_files="$IROHMS_INSTALL_CURRENT_TARGET_DIR"/"$1"
@@ -571,7 +571,7 @@ Command: irohms-install-cp $*"
     do
         if [ ! -f "$file" ]
         then
-            irohms-install-error "Invalid irohms-install-cp call: file '$file' does not exist."
+            cucr-install-error "Invalid cucr-install-cp call: file '$file' does not exist."
         fi
 
         if [ -d "$2" ]
@@ -583,16 +583,16 @@ Command: irohms-install-cp $*"
 
         if ! cmp --quiet "$file" "$cp_target"
         then
-            irohms-install-debug "File $file and $cp_target are different, copying..."
+            cucr-install-debug "File $file and $cp_target are different, copying..."
             if "$root_required"
             then
-                irohms-install-debug "Using elevated privileges (sudo)"
+                cucr-install-debug "Using elevated privileges (sudo)"
                 sudo mkdir --parents --verbose "$cp_target_parent_dir" && sudo cp --verbose "$file" "$cp_target"
             else
                 mkdir --parents --verbose "$cp_target_parent_dir" && cp --verbose "$file" "$cp_target"
             fi
         else
-            irohms-install-debug "File $file and $cp_target are the same, no action needed"
+            cucr-install-debug "File $file and $cp_target are the same, no action needed"
         fi
 
     done
@@ -611,22 +611,22 @@ Command: irohms-install-cp $*"
 #    .... some text ...
 #    # END TU/E BLOCK
 #
-function irohms-install-add-text
+function cucr-install-add-text
 {
-    irohms-install-debug "irohms-install-add-text $*"
+    cucr-install-debug "cucr-install-add-text $*"
 
     if [ -z "$2" ]
     then
-        irohms-install-error "Invalid irohms-install-add-text call. Usage: irohms-install-add-text SOURCE_FILE TARGET_FILE"
+        cucr-install-error "Invalid cucr-install-add-text call. Usage: cucr-install-add-text SOURCE_FILE TARGET_FILE"
     fi
 
-    irohms-install-debug "irohms-install-add-text $*"
+    cucr-install-debug "cucr-install-add-text $*"
 
     local source_file=$1
     # shellcheck disable=SC2088
     if [[ "$source_file" == "/"* ]] || [[ "$source_file" == "~/"* ]]
     then
-        irohms-install-error "irohms-install-add-text: Only relative source files to the target directory are allowed"
+        cucr-install-error "cucr-install-add-text: Only relative source files to the target directory are allowed"
     else
         source_file="$IROHMS_INSTALL_CURRENT_TARGET_DIR"/"$source_file"
     fi
@@ -634,37 +634,37 @@ function irohms-install-add-text
     # shellcheck disable=SC2088
     if [[ "$target_file" != "/"* ]] && [[ "$source_file" != "~/"* ]]
     then
-        irohms-install-error "irohms-install-add-text: target file needs to be absolute or relative to the home directory"
+        cucr-install-error "cucr-install-add-text: target file needs to be absolute or relative to the home directory"
     fi
 
     local root_required=true
     if namei -l "$target_file" | grep -q "$(whoami)"
     then
-        irohms-install-debug "irohms-install-add-text: NO root required"
+        cucr-install-debug "cucr-install-add-text: NO root required"
         root_required=false
     else
-        irohms-install-debug "irohms-install-add-text: root required"
+        cucr-install-debug "cucr-install-add-text: root required"
     fi
 
     if [ ! -f "$source_file" ]
     then
-        irohms-install-error "irohms-install-add-text: No such source file: $source_file"
+        cucr-install-error "cucr-install-add-text: No such source file: $source_file"
     fi
 
     if [ ! -f "$target_file" ]
     then
-        irohms-install-error "irohms-install-add-text: No such target file: $target_file"
+        cucr-install-error "cucr-install-add-text: No such target file: $target_file"
     fi
 
     local begin_tag end_tag text
     begin_tag=$(head -n 1 "$source_file")
     end_tag=$(awk '/./{line=$0} END{print line}' "$source_file")
     text=$(sed -e :a -e '/^\n*$/{$d;N;};/\n&/ba' "$source_file")
-    irohms-install-debug "irohms-install-add-text: Lines to be added: \n$text"
+    cucr-install-debug "cucr-install-add-text: Lines to be added: \n$text"
 
     if ! grep -q "$begin_tag" "$target_file"
     then
-        irohms-install-debug "irohms-install-add-text: Appending $target_file"
+        cucr-install-debug "cucr-install-add-text: Appending $target_file"
         if $root_required
         then
             echo -e "$text" | sudo tee --append "$target_file" 1> /dev/null
@@ -672,16 +672,16 @@ function irohms-install-add-text
             echo -e "$text" | tee --append "$target_file" 1> /dev/null
         fi
     else
-        irohms-install-debug "irohms-install-add-text: Begin tag already in $target_file, so comparing the files for changed lines"
-        local tmp_source_file="/tmp/irohms-install-add-text_source_temp_${USER}_${IROHMS_INSTALL_CURRENT_TARGET}_${stamp}"
-        local tmp_target_file="/tmp/irohms-install-add-text_target_temp_${USER}_${IROHMS_INSTALL_CURRENT_TARGET}_${stamp}"
+        cucr-install-debug "cucr-install-add-text: Begin tag already in $target_file, so comparing the files for changed lines"
+        local tmp_source_file="/tmp/cucr-install-add-text_source_temp_${USER}_${IROHMS_INSTALL_CURRENT_TARGET}_${stamp}"
+        local tmp_target_file="/tmp/cucr-install-add-text_target_temp_${USER}_${IROHMS_INSTALL_CURRENT_TARGET}_${stamp}"
 
         echo "$text" | tee "$tmp_source_file" > /dev/null
         sed -e "/^$end_tag/r $tmp_source_file" -e "/^$begin_tag/,/^$end_tag/d" "$target_file" | tee "$tmp_target_file" 1> /dev/null
 
         if ! cmp --quiet "$tmp_target_file" "$target_file"
         then
-            irohms-install-debug "irohms-install-add-text: Lines are changed, so copying"
+            cucr-install-debug "cucr-install-add-text: Lines are changed, so copying"
             if $root_required
             then
                 sudo mv "$tmp_target_file" "$target_file"
@@ -689,7 +689,7 @@ function irohms-install-add-text
                 mv "$tmp_target_file" "$target_file"
             fi
         else
-            irohms-install-debug "irohms-install-add-text: Lines have not changed, so not copying"
+            cucr-install-debug "cucr-install-add-text: Lines have not changed, so not copying"
         fi
         rm "$tmp_source_file" "$tmp_target_file"
     fi
@@ -697,13 +697,13 @@ function irohms-install-add-text
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-get-releases
+function cucr-install-get-releases
 {
-    irohms-install-debug "irohms-install-get-releases $*"
+    cucr-install-debug "cucr-install-get-releases $*"
 
     if test $# -lt 3
     then
-        irohms-install-error "Invalid irohms-install-get-releases call: needs at least 3 input parameters"
+        cucr-install-error "Invalid cucr-install-get-releases call: needs at least 3 input parameters"
     fi
 
     local repo_short_url=$1
@@ -719,32 +719,32 @@ function irohms-install-get-releases
     fi
 
     "$IROHMS_INSTALL_SCRIPTS_DIR"/github-releases.py --get -u "$repo_short_url" "$tag" -o "$output_dir" "$filename" || \
-        irohms-install-error "Failed to get '$filename' from '$repo_short_url'"
+        cucr-install-error "Failed to get '$filename' from '$repo_short_url'"
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-system
+function cucr-install-system
 {
-    irohms-install-debug "irohms-install-system $*"
+    cucr-install-debug "cucr-install-system $*"
 
     if [ -z "$1" ]
     then
-        irohms-install-error "Invalid irohms-install-system call: needs package as argument."
+        cucr-install-error "Invalid cucr-install-system call: needs package as argument."
     fi
-    irohms-install-debug "Adding $1 to apt list"
+    cucr-install-debug "Adding $1 to apt list"
     IROHMS_INSTALL_SYSTEMS="$1 $IROHMS_INSTALL_SYSTEMS"
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-system-now
+function cucr-install-system-now
 {
-    irohms-install-debug "irohms-install-system-now $*"
+    cucr-install-debug "cucr-install-system-now $*"
 
     if [ -z "$1" ]
     then
-        irohms-install-error "Invalid irohms-install-system-now call: needs package as argument."
+        cucr-install-error "Invalid cucr-install-system-now call: needs package as argument."
     fi
 
     local pkgs_to_install=""
@@ -760,7 +760,7 @@ function irohms-install-system-now
         then
             pkgs_to_install="$pkgs_to_install $pkg"
         else
-            irohms-install-debug "$pkg is already installed"
+            cucr-install-debug "$pkg is already installed"
         fi
     done
 
@@ -790,47 +790,47 @@ function irohms-install-system-now
         if [ ! -f "$apt_get_updated" ]
         then
             # Update once every boot. Or delete the tmp file if you need an update before installing a pkg.
-            irohms-install-debug "sudo apt-get update -qq"
+            cucr-install-debug "sudo apt-get update -qq"
             sudo apt-get update -qq
             touch $apt_get_updated
         fi
 
-        irohms-install-debug "sudo apt-get install --assume-yes -q $pkgs_to_install"
+        cucr-install-debug "sudo apt-get install --assume-yes -q $pkgs_to_install"
         # shellcheck disable=SC2086
-        sudo apt-get install --assume-yes -q $pkgs_to_install || irohms-install-error "An error occurred while installing system packages."
-        irohms-install-debug "Installed $pkgs_to_install ($?)"
+        sudo apt-get install --assume-yes -q $pkgs_to_install || cucr-install-error "An error occurred while installing system packages."
+        cucr-install-debug "Installed $pkgs_to_install ($?)"
     fi
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-ppa
+function cucr-install-ppa
 {
-    irohms-install-debug "irohms-install-ppa $*"
+    cucr-install-debug "cucr-install-ppa $*"
 
     if [ -z "$1" ]
     then
-        irohms-install-error "Invalid irohms-install-ppa call: needs ppa as argument."
+        cucr-install-error "Invalid cucr-install-ppa call: needs ppa as argument."
     fi
     local ppa="$*"
 
     if [[ $ppa != "ppa:"* && $ppa != "deb"* ]]
     then
-        irohms-install-error "Invalid irohms-install-ppa call: needs to start with 'ppa:' or 'deb ' ($ppa)"
+        cucr-install-error "Invalid cucr-install-ppa call: needs to start with 'ppa:' or 'deb ' ($ppa)"
     fi
-    irohms-install-debug "Adding $ppa to PPA list"
+    cucr-install-debug "Adding $ppa to PPA list"
     IROHMS_INSTALL_PPA="${IROHMS_INSTALL_PPA} ${ppa// /^}"  # Replace space by ^ to support for-loops later
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-ppa-now
+function cucr-install-ppa-now
 {
-    irohms-install-debug "irohms-install-ppa-now $*"
+    cucr-install-debug "cucr-install-ppa-now $*"
 
     if [ -z "$1" ]
     then
-        irohms-install-error "Invalid irohms-install-ppa-now call: needs ppa or deb as argument."
+        cucr-install-error "Invalid cucr-install-ppa-now call: needs ppa or deb as argument."
     fi
 
     local PPA_ADDED=""
@@ -841,7 +841,7 @@ function irohms-install-ppa-now
         ppa="${ppa//^/ }"
         if [[ $ppa != "ppa:"* && $ppa != "deb "* ]]
         then
-            irohms-install-error "Invalid irohms-install-ppa-now call: needs to start with 'ppa:' or 'deb ' ($ppa)"
+            cucr-install-error "Invalid cucr-install-ppa-now call: needs to start with 'ppa:' or 'deb ' ($ppa)"
         fi
         needs_to_be_added="false"
         if [[ "$ppa" == "ppa:"* ]]
@@ -857,23 +857,23 @@ function irohms-install-ppa-now
                 needs_to_be_added="true"
             fi
         else
-            irohms-install-warning "irohms-install-ppa-now: We shouldn't end up here ($ppa)"
+            cucr-install-warning "cucr-install-ppa-now: We shouldn't end up here ($ppa)"
         fi
 
         if [ "$needs_to_be_added" == "true" ]
         then
-            irohms-install-system-now software-properties-common
-            irohms-install-info "Adding ppa: $ppa"
-            irohms-install-debug "sudo add-apt-repository --yes $ppa"
-            sudo add-apt-repository --yes "$ppa" || irohms-install-error "An error occurred while adding ppa: $ppa"
+            cucr-install-system-now software-properties-common
+            cucr-install-info "Adding ppa: $ppa"
+            cucr-install-debug "sudo add-apt-repository --yes $ppa"
+            sudo add-apt-repository --yes "$ppa" || cucr-install-error "An error occurred while adding ppa: $ppa"
             PPA_ADDED=true
         else
-            irohms-install-debug "$ppa is already added previously"
+            cucr-install-debug "$ppa is already added previously"
         fi
     done
     if [ -n "$PPA_ADDED" ]
     then
-        irohms-install-debug "sudo apt-get update -qq"
+        cucr-install-debug "sudo apt-get update -qq"
         sudo apt-get update -qq
     fi
 }
@@ -884,30 +884,30 @@ function _irohms-install-pip
 {
     local pv=$1
     shift
-    irohms-install-debug "irohms-install-pip${pv} $*"
+    cucr-install-debug "cucr-install-pip${pv} $*"
 
     if [ -z "$1" ]
     then
-        irohms-install-error "Invalid irohms-install-pip${pv} call: needs package as argument."
+        cucr-install-error "Invalid cucr-install-pip${pv} call: needs package as argument."
     fi
-    irohms-install-debug "Adding $1 to pip${pv} list"
+    cucr-install-debug "Adding $1 to pip${pv} list"
     local list=IROHMS_INSTALL_PIP"${pv}"S
     # shellcheck disable=SC2140
     declare -g "$list"="$1 ${!list}"
 }
 
 # Needed for backward compatibility
-function irohms-install-pip
+function cucr-install-pip
 {
     _irohms-install-pip "2" "$@"
 }
 
-function irohms-install-pip2
+function cucr-install-pip2
 {
     _irohms-install-pip "2" "$@"
 }
 
-function irohms-install-pip3
+function cucr-install-pip3
 {
     _irohms-install-pip "3" "$@"
 }
@@ -918,11 +918,11 @@ function _irohms-install-pip-now
 {
     local pv=$1
     shift
-    irohms-install-debug "irohms-install-pip${pv}-now $*"
+    cucr-install-debug "cucr-install-pip${pv}-now $*"
 
     if [ -z "$1" ]
     then
-        irohms-install-error "Invalid irohms-install-pip${pv}-now call: needs package as argument."
+        cucr-install-error "Invalid cucr-install-pip${pv}-now call: needs package as argument."
     fi
 
     # Make sure pip is up-to-date before checking version and installing
@@ -931,11 +931,11 @@ function _irohms-install-pip-now
     desired_pip_version="20"
     if version_gt "$desired_pip_version" "$pip_version"
     then
-        irohms-install-debug "pip${pv} not yet version >=$desired_pip_version, but $pip_version"
+        cucr-install-debug "pip${pv} not yet version >=$desired_pip_version, but $pip_version"
         python"${pv}" -m pip install --user --upgrade pip
         hash -r
     else
-        irohms-install-debug "Already pip${pv}>=$desired_pip_version"
+        cucr-install-debug "Already pip${pv}>=$desired_pip_version"
     fi
 
     local pips_to_check=""
@@ -958,13 +958,13 @@ function _irohms-install-pip-now
     local error_code=$?
     if [ "$error_code" -gt 1 ]
     then
-        irohms-install-error "irohms-install-pip${pv}-now: $installed_versions"
+        cucr-install-error "cucr-install-pip${pv}-now: $installed_versions"
     fi
     read -r -a installed_versions <<< "$installed_versions"
 
     if [ "${#pips_to_check[@]}" -ne "${#installed_versions[@]}" ]
     then
-        irohms-install-error "Lengths of pips_to_check, ${#pips_to_check[@]}, and installed_version, ${#installed_versions[@]}, don't match"
+        cucr-install-error "Lengths of pips_to_check, ${#pips_to_check[@]}, and installed_version, ${#installed_versions[@]}, don't match"
     fi
 
     for idx in "${!pips_to_check[@]}"
@@ -976,7 +976,7 @@ function _irohms-install-pip-now
         then
             pips_to_install="$pips_to_install $pkg_req"
         else
-            irohms-install-debug "$pkg_req is already installed, $pkg_installed"
+            cucr-install-debug "$pkg_req is already installed, $pkg_installed"
         fi
     done
 
@@ -985,7 +985,7 @@ function _irohms-install-pip-now
         echo -e "Going to run the following command:\n"
         echo -e "yes | python${pv} -m pip install --user $pips_to_install\n"
         # shellcheck disable=SC2048,SC2086
-        yes | python"${pv}" -m pip install --user $pips_to_install || irohms-install-error "An error occurred while installing pip${pv} packages."
+        yes | python"${pv}" -m pip install --user $pips_to_install || cucr-install-error "An error occurred while installing pip${pv} packages."
     fi
 
     if [ -n "$git_pips_to_install" ]
@@ -995,13 +995,13 @@ function _irohms-install-pip-now
             echo -e "Going to run the following command:\n"
             echo -e "yes | python${pv} -m pip install --user $pkg\n"
             # shellcheck disable=SC2048,SC2086
-            yes | python"${pv}" -m pip install --user $pkg || irohms-install-error "An error occurred while installing pip${pv} packages."
+            yes | python"${pv}" -m pip install --user $pkg || cucr-install-error "An error occurred while installing pip${pv} packages."
         done
     fi
 }
 
 # Needed for backward compatibility
-function irohms-install-pip-now
+function cucr-install-pip-now
 {
 	if [ "$IROHMS_ROS_DISTRO" == "noetic" ]
 	then
@@ -1011,7 +1011,7 @@ function irohms-install-pip-now
 	fi
 }
 
-function irohms-install-pip2-now
+function cucr-install-pip2-now
 {
 	if [ "$IROHMS_ROS_DISTRO" == "noetic" ]
 	then
@@ -1021,37 +1021,37 @@ function irohms-install-pip2-now
 	fi
 }
 
-function irohms-install-pip3-now
+function cucr-install-pip3-now
 {
     _irohms-install-pip-now "3" "$@"
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-snap
+function cucr-install-snap
 {
-    irohms-install-debug "irohms-install-snap $*"
+    cucr-install-debug "cucr-install-snap $*"
 
     if [ -z "$1" ]
     then
-        irohms-install-error "Invalid irohms-install-snap call: needs package as argument."
+        cucr-install-error "Invalid cucr-install-snap call: needs package as argument."
     fi
-    irohms-install-debug "Adding $1 to snap list"
+    cucr-install-debug "Adding $1 to snap list"
     IROHMS_INSTALL_SNAPS="$1 $IROHMS_INSTALL_SNAPS"
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-snap-now
+function cucr-install-snap-now
 {
-    irohms-install-debug "irohms-install-snap-now $*"
+    cucr-install-debug "cucr-install-snap-now $*"
 
     if [ -z "$1" ]
     then
-        irohms-install-error "Invalid irohms-install-snap-now call: needs package as argument."
+        cucr-install-error "Invalid cucr-install-snap-now call: needs package as argument."
     fi
 
-    irohms-install-system-now snapd
+    cucr-install-system-now snapd
 
     local snaps_to_install snaps_installed
     snaps_to_install=""
@@ -1062,9 +1062,9 @@ function irohms-install-snap-now
         if [[ ! $snaps_installed == *$pkg* ]] # Check if pkg is not already installed
         then
             snaps_to_install="$snaps_to_install $pkg"
-            irohms-install-debug "snap pkg: $pkg is not yet installed"
+            cucr-install-debug "snap pkg: $pkg is not yet installed"
         else
-            irohms-install-debug "snap pkg: $pkg is already installed"
+            cucr-install-debug "snap pkg: $pkg is already installed"
         fi
     done
 
@@ -1074,76 +1074,76 @@ function irohms-install-snap-now
         for pkg in $snaps_to_install
         do
             echo -e "yes | sudo snap install --classic $pkg\n"
-            irohms-install-debug "yes | sudo snap install --classic $pkg"
-            yes | sudo snap install --classic "$pkg" || irohms-install-error "An error occurred while installing snap packages."
+            cucr-install-debug "yes | sudo snap install --classic $pkg"
+            yes | sudo snap install --classic "$pkg" || cucr-install-error "An error occurred while installing snap packages."
         done
     fi
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-dpkg-now
+function cucr-install-dpkg-now
 {
-    irohms-install-debug "irohms-install-dpkg-now $*"
-    irohms-install-debug "calling: irohms-install-dpkg $*"
-    irohms-install-dpkg "$@"
+    cucr-install-debug "cucr-install-dpkg-now $*"
+    cucr-install-debug "calling: cucr-install-dpkg $*"
+    cucr-install-dpkg "$@"
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-dpkg
+function cucr-install-dpkg
 {
-    irohms-install-debug "irohms-install-dpkg $*"
+    cucr-install-debug "cucr-install-dpkg $*"
 
     if [ -z "$1" ]
     then
-        irohms-install-error "Invalid irohms-install-dpkg call: needs package as argument."
+        cucr-install-error "Invalid cucr-install-dpkg call: needs package as argument."
     fi
-    irohms-install-debug "Installing dpkg $1"
+    cucr-install-debug "Installing dpkg $1"
     sudo dpkg --install "$1"
-    irohms-install-debug "sudo apt-get --fix-broken --assume-yes -q install"
+    cucr-install-debug "sudo apt-get --fix-broken --assume-yes -q install"
     sudo apt-get --fix-broken --assume-yes -q install
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-function irohms-install-ros
+function cucr-install-ros
 {
-    irohms-install-debug "irohms-install-ros $*"
+    cucr-install-debug "cucr-install-ros $*"
 
     local install_type=$1
     local src=$2
     local sub_dir=$3
     local version=$4
 
-    irohms-install-debug "Installing ros package: type: $install_type, source: $src"
+    cucr-install-debug "Installing ros package: type: $install_type, source: $src"
 
-    [ -n "$IROHMS_ROS_DISTRO" ] || irohms-install-error "Environment variable 'IROHMS_ROS_DISTRO' is not set."
+    [ -n "$IROHMS_ROS_DISTRO" ] || cucr-install-error "Environment variable 'IROHMS_ROS_DISTRO' is not set."
 
     local ros_pkg_name=${IROHMS_INSTALL_CURRENT_TARGET#ros-}
     if [[ $ros_pkg_name == *-* ]]
     then
-        irohms-install-error "A ROS package cannot contain dashes (${ros_pkg_name}), make sure the package is named '${ros_pkg_name//-/_}' and rename the target to 'ros-${ros_pkg_name//-/_}'"
+        cucr-install-error "A ROS package cannot contain dashes (${ros_pkg_name}), make sure the package is named '${ros_pkg_name//-/_}' and rename the target to 'ros-${ros_pkg_name//-/_}'"
         return 1
     fi
 
     # First of all, make sure ROS itself is installed
-    irohms-install-target ros || irohms-install-error "Failed to install target 'ROS'"
+    cucr-install-target ros || cucr-install-error "Failed to install target 'ROS'"
 
     if [ "$install_type" = "system" ]
     then
-        irohms-install-debug "irohms-install-system ros-$IROHMS_ROS_DISTRO-$src"
-        irohms-install-system ros-"$IROHMS_ROS_DISTRO"-"$src"
+        cucr-install-debug "cucr-install-system ros-$IROHMS_ROS_DISTRO-$src"
+        cucr-install-system ros-"$IROHMS_ROS_DISTRO"-"$src"
         return 0
     fi
 
     if [ -z "$ROS_PACKAGE_INSTALL_DIR" ]
     then
-        irohms-install-error "Environment variable ROS_PACKAGE_INSTALL_DIR not set."
+        cucr-install-error "Environment variable ROS_PACKAGE_INSTALL_DIR not set."
     fi
 
     # Make sure the ROS package install dir exists
-    irohms-install-debug "Creating ROS package install dir: $ROS_PACKAGE_INSTALL_DIR"
+    cucr-install-debug "Creating ROS package install dir: $ROS_PACKAGE_INSTALL_DIR"
     mkdir -p "$ROS_PACKAGE_INSTALL_DIR"
 
     local ros_pkg_dir="$ROS_PACKAGE_INSTALL_DIR"/"$ros_pkg_name"
@@ -1164,7 +1164,7 @@ function irohms-install-ros
         repos_dir_old=${repos_dir_old//[^a-zA-Z0-9\/\.-]/_}
         if [ -d "$repos_dir_old" ]
         then
-            irohms-install-debug "mv $repos_dir_old $repos_dir"
+            cucr-install-debug "mv $repos_dir_old $repos_dir"
             mv "$repos_dir_old" "$repos_dir"
         fi
         # temp; end
@@ -1184,26 +1184,26 @@ function irohms-install-ros
     then
         repos_dir=$ros_pkg_dir
     fi
-    irohms-install-debug "repos_dir: $repos_dir"
+    cucr-install-debug "repos_dir: $repos_dir"
 
     if [ "$install_type" = "git" ]
     then
-        irohms-install-git "$src" "$repos_dir" "$version"
+        cucr-install-git "$src" "$repos_dir" "$version"
     elif [ "$install_type" = "hg" ]
     then
-        irohms-install-hg "$src" "$repos_dir" "$version"
+        cucr-install-hg "$src" "$repos_dir" "$version"
     elif [ "$install_type" = "svn" ]
     then
-        irohms-install-svn "$src" "$repos_dir" "$version"
+        cucr-install-svn "$src" "$repos_dir" "$version"
     else
-        irohms-install-error "Unknown ros install type: '${install_type}'"
+        cucr-install-error "Unknown ros install type: '${install_type}'"
     fi
 
     if [ -d "$repos_dir" ]
     then
         if [ ! -d "$repos_dir"/"$sub_dir" ]
         then
-            irohms-install-error "Subdirectory '$sub_dir' does not exist for URL '$src'."
+            cucr-install-error "Subdirectory '$sub_dir' does not exist for URL '$src'."
         fi
 
         if [ -L "$ros_pkg_dir" ]
@@ -1212,7 +1212,7 @@ function irohms-install-ros
             # because it means the source URL has changed
             if [ ! "$ros_pkg_dir" -ef "$repos_dir"/"$sub_dir" ]
             then
-                irohms-install-info "URL has changed to $src/$sub_dir"
+                cucr-install-info "URL has changed to $src/$sub_dir"
                 rm "$ros_pkg_dir"
                 ln -s "$repos_dir"/"$sub_dir" "$ros_pkg_dir"
             fi
@@ -1228,27 +1228,27 @@ function irohms-install-ros
             if [ -f "$pkg_xml" ]
             then
                 # Catkin
-                irohms-install-debug "Parsing $pkg_xml"
+                cucr-install-debug "Parsing $pkg_xml"
                 local deps
                 deps=$("$IROHMS_INSTALL_SCRIPTS_DIR"/parse-package-xml_irohms.py "$pkg_xml")
-                irohms-install-debug "Parsed package.xml\n$deps"
+                cucr-install-debug "Parsed package.xml\n$deps"
 
                 for dep in $deps
                 do
                     # Preference given to target name starting with ros-
-                    irohms-install-target ros-"$dep" || irohms-install-target "$dep" || \
-                        irohms-install-error "Targets 'ros-$dep' and '$dep' don't exist"
+                    cucr-install-target ros-"$dep" || cucr-install-target "$dep" || \
+                        cucr-install-error "Targets 'ros-$dep' and '$dep' don't exist"
                 done
 
             else
-                irohms-install-warning "Does not contain a valid ROS package.xml"
+                cucr-install-warning "Does not contain a valid ROS package.xml"
             fi
         else
-            irohms-install-debug "No need to parse package.xml for dependencies"
+            cucr-install-debug "No need to parse package.xml for dependencies"
         fi
 
     else
-        irohms-install-error "Checking out $src was not successful."
+        cucr-install-error "Checking out $src was not successful."
     fi
 
     IROHMS_INSTALL_PKG_DIR=$ros_pkg_dir
@@ -1258,7 +1258,7 @@ function irohms-install-ros
 
 function _missing_targets_check
 {
-    irohms-install-debug "_missing_targets_check $*"
+    cucr-install-debug "_missing_targets_check $*"
 
     # Check if valid target received as input
     local targets="$1"
@@ -1276,7 +1276,7 @@ function _missing_targets_check
     if [ -n "$missing_targets" ]
     then
         missing_targets=$(echo "$missing_targets" | tr " " "\n" | sort)
-        irohms-install-error "The following installed targets don't exist (anymore):\n$missing_targets"
+        cucr-install-error "The following installed targets don't exist (anymore):\n$missing_targets"
     fi
 
     return 0
@@ -1334,7 +1334,7 @@ done
 
 # Create log file
 stamp=$(date_stamp)
-INSTALL_DETAILS_FILE=/tmp/irohms-get-details-$stamp
+INSTALL_DETAILS_FILE=/tmp/cucr-get-details-$stamp
 touch "$INSTALL_DETAILS_FILE"
 
 # Initialize
@@ -1342,12 +1342,12 @@ ROS_PACKAGE_INSTALL_DIR=$IROHMS_SYSTEM_DIR/src
 
 IROHMS_INSTALL_SCRIPTS_DIR=$IROHMS_DIR/installer
 
-IROHMS_INSTALL_GENERAL_STATE_DIR=/tmp/irohms-installer
+IROHMS_INSTALL_GENERAL_STATE_DIR=/tmp/cucr-installer
 if [ ! -d $IROHMS_INSTALL_GENERAL_STATE_DIR ]
 then
-    irohms-install-debug "mkdir $IROHMS_INSTALL_GENERAL_STATE_DIR"
+    cucr-install-debug "mkdir $IROHMS_INSTALL_GENERAL_STATE_DIR"
     mkdir "$IROHMS_INSTALL_GENERAL_STATE_DIR"
-    irohms-install-debug "chmod a+rwx $IROHMS_INSTALL_GENERAL_STATE_DIR"
+    cucr-install-debug "chmod a+rwx $IROHMS_INSTALL_GENERAL_STATE_DIR"
     chmod a+rwx "$IROHMS_INSTALL_GENERAL_STATE_DIR"
 fi
 
@@ -1371,14 +1371,14 @@ IROHMS_INSTALL_INFOS=
 # gcc, python-dev, python-docutils, python-pkg-resources, python-setuptools, python-wheel
 if [ "$IROHMS_ROS_DISTRO" == "noetic" ]
 then
-    irohms-install-system-now git gcc \
+    cucr-install-system-now git gcc \
     python3-pip python3-dev python3-docutils python3-pkg-resources python3-setuptools python3-wheel
 else
-    irohms-install-system-now git gcc python-pip python-dev python-docutils python-pkg-resources python-setuptools python-wheel \
+    cucr-install-system-now git gcc python-pip python-dev python-docutils python-pkg-resources python-setuptools python-wheel \
     python3-pip python3-dev python3-docutils python3-pkg-resources python3-setuptools python3-wheel
 fi
 
-irohms-install-pip3-now catkin-pkg PyYAML "mercurial>=5.3"
+cucr-install-pip3-now catkin-pkg PyYAML "mercurial>=5.3"
 
 
 # Handling of targets
@@ -1406,17 +1406,17 @@ _missing_targets_check "$targets"
 
 for target in $targets
 do
-    irohms-install-debug "Main loop: installing $target"
+    cucr-install-debug "Main loop: installing $target"
     # Next line shouldn't error anymore with _missing_targets_check
-    irohms-install-target "$target" || irohms-install-error "Installed target: '$target' doesn't exist (anymore)"
+    cucr-install-target "$target" || cucr-install-error "Installed target: '$target' doesn't exist (anymore)"
 
     if [[ "$irohms_get_cmd" == "install" ]]
     then
         # Mark as installed
-        irohms-install-debug "[$target] marked as installed after a successful install"
+        cucr-install-debug "[$target] marked as installed after a successful install"
         touch "$IROHMS_INSTALL_INSTALLED_DIR"/"$target"
     else
-        irohms-install-debug "[$target] succesfully updated"
+        cucr-install-debug "[$target] succesfully updated"
     fi
 done
 
@@ -1443,8 +1443,8 @@ if [ -n "$IROHMS_INSTALL_PPA" ]
 then
     IROHMS_INSTALL_CURRENT_TARGET="PPA-ADD"
 
-    irohms-install-debug "calling: irohms-install-ppa-now $IROHMS_INSTALL_PPA"
-    irohms-install-ppa-now "$IROHMS_INSTALL_PPA"
+    cucr-install-debug "calling: cucr-install-ppa-now $IROHMS_INSTALL_PPA"
+    cucr-install-ppa-now "$IROHMS_INSTALL_PPA"
 fi
 
 
@@ -1453,8 +1453,8 @@ if [ -n "$IROHMS_INSTALL_SYSTEMS" ]
 then
     IROHMS_INSTALL_CURRENT_TARGET="APT-GET"
 
-    irohms-install-debug "calling: irohms-install-system-now $IROHMS_INSTALL_SYSTEMS"
-    irohms-install-system-now "$IROHMS_INSTALL_SYSTEMS"
+    cucr-install-debug "calling: cucr-install-system-now $IROHMS_INSTALL_SYSTEMS"
+    cucr-install-system-now "$IROHMS_INSTALL_SYSTEMS"
 fi
 
 
@@ -1463,8 +1463,8 @@ if [ -n "$IROHMS_INSTALL_PIP2S" ]
 then
     IROHMS_INSTALL_CURRENT_TARGET="PIP2"
 
-    irohms-install-debug "calling: irohms-install-pip2-now $IROHMS_INSTALL_PIP2S"
-    irohms-install-pip2-now "$IROHMS_INSTALL_PIP2S"
+    cucr-install-debug "calling: cucr-install-pip2-now $IROHMS_INSTALL_PIP2S"
+    cucr-install-pip2-now "$IROHMS_INSTALL_PIP2S"
 fi
 
 
@@ -1473,8 +1473,8 @@ if [ -n "$IROHMS_INSTALL_PIP3S" ]
 then
     IROHMS_INSTALL_CURRENT_TARGET="PIP3"
 
-    irohms-install-debug "calling: irohms-install-pip3-now $IROHMS_INSTALL_PIP3S"
-    irohms-install-pip3-now "$IROHMS_INSTALL_PIP3S"
+    cucr-install-debug "calling: cucr-install-pip3-now $IROHMS_INSTALL_PIP3S"
+    cucr-install-pip3-now "$IROHMS_INSTALL_PIP3S"
 fi
 
 
@@ -1483,12 +1483,12 @@ if [ -n "$IROHMS_INSTALL_SNAPS" ]
 then
     IROHMS_INSTALL_CURRENT_TARGET="SNAP"
 
-    irohms-install-debug "calling: irohms-install-snap-now $IROHMS_INSTALL_SNAPS"
-    irohms-install-snap-now "$IROHMS_INSTALL_SNAPS"
+    cucr-install-debug "calling: cucr-install-snap-now $IROHMS_INSTALL_SNAPS"
+    cucr-install-snap-now "$IROHMS_INSTALL_SNAPS"
 fi
 
 IROHMS_INSTALL_CURRENT_TARGET="main-loop"
 
-irohms-install-debug "Installer completed succesfully"
+cucr-install-debug "Installer completed succesfully"
 
 return 0

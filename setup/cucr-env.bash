@@ -1,17 +1,17 @@
 #! /usr/bin/env bash
 
 # ----------------------------------------------------------------------------------------------------
-#                                              IROHMS-ENV
+#                                              CUCR-ENV
 # ----------------------------------------------------------------------------------------------------
 
-function irohms-env
+function cucr-env
 {
     if [ -z "$1" ]
     then
         # shellcheck disable=SC1078,SC1079
-        echo """irohms-env is a tool for switching between different installation environments.
+        echo """cucr-env is a tool for switching between different installation environments.
 
-    Usage: irohms-env COMMAND [ARG1 ARG2 ...]
+    Usage: cucr-env COMMAND [ARG1 ARG2 ...]
 
     Possible commands:
 
@@ -39,7 +39,7 @@ function irohms-env
     then
         if [ -z "$1" ]
         then
-            echo "Usage: irohms-env init NAME [ DIRECTORY ] [ TARGETS GIT URL ]"
+            echo "Usage: cucr-env init NAME [ DIRECTORY ] [ TARGETS GIT URL ]"
             return 1
         fi
 
@@ -49,13 +49,13 @@ function irohms-env
 
         if [ -f "$IROHMS_DIR"/user/envs/"$1" ]
         then
-            echo "[irohms-env] Environment '$1' already exists"
+            echo "[cucr-env] Environment '$1' already exists"
             return 1
         fi
 
         if [ -d "$dir"/.env ]
         then
-            echo "[irohms-env] Directory '$dir' is already an environment directory."
+            echo "[cucr-env] Directory '$dir' is already an environment directory."
             return 1
         fi
 
@@ -63,11 +63,11 @@ function irohms-env
         # Create .env and .env/setup directories
         mkdir -p "$dir"/.env/setup
         echo -e "#! /usr/bin/env bash\n" > "$dir"/.env/setup/user_setup.bash
-        echo "[irohms-env] Created new environment $1"
+        echo "[cucr-env] Created new environment $1"
 
         if [ -n "$3" ]
         then
-            irohms-env init-targets "$1" "$3"
+            cucr-env init-targets "$1" "$3"
         fi
 
     elif [[ $cmd == "remove" ]]
@@ -75,7 +75,7 @@ function irohms-env
         if [ -z "$1" ]
         then
             # shellcheck disable=SC1078,SC1079
-            echo """Usage: irohms-env remove [options] ENVIRONMENT
+            echo """Usage: cucr-env remove [options] ENVIRONMENT
 options:
     --purge
         Using this would completely remove the selected ENVIRONMENT if it exists"""
@@ -91,7 +91,7 @@ options:
                         PURGE=true
                         ;;
                     --*)
-                        echo "[irohms-env] Unknown option $1"
+                        echo "[cucr-env] Unknown option $1"
                         ;;
                     *)
                         # Read only the first passed environment name and ignore
@@ -108,7 +108,7 @@ options:
 
         if [ ! -f "$IROHMS_DIR"/user/envs/"$env" ]
         then
-            echo "[irohms-env] No such environment: '$env'."
+            echo "[cucr-env] No such environment: '$env'."
             return 1
         fi
 
@@ -120,12 +120,12 @@ options:
             dir_moved=$dir.$(date +%F_%R)
             mv "$dir" "$dir_moved"
             # shellcheck disable=SC1078,SC1079
-            echo """[irohms-env] Removed environment '$env'
+            echo """[cucr-env] Removed environment '$env'
 Moved environment directory of '$env' to '$dir_moved'"""
         else
             rm -rf "$dir"
             # shellcheck disable=SC1078,SC1079
-            echo """[irohms-env] Removed environment '$env'
+            echo """[cucr-env] Removed environment '$env'
 Purged environment directory of '$env'"""
         fi
 
@@ -133,13 +133,13 @@ Purged environment directory of '$env'"""
     then
         if [ -z "$1" ]
         then
-            echo "Usage: irohms-env switch ENVIRONMENT"
+            echo "Usage: cucr-env switch ENVIRONMENT"
             return 1
         fi
 
         if [ ! -f "$IROHMS_DIR"/user/envs/"$1" ]
         then
-            echo "[irohms-env] No such environment: '$1'."
+            echo "[cucr-env] No such environment: '$1'."
             return 1
         fi
 
@@ -154,19 +154,19 @@ Purged environment directory of '$env'"""
     then
         if [ -z "$1" ]
         then
-            echo "Usage: irohms-env set-default ENVIRONMENT"
+            echo "Usage: cucr-env set-default ENVIRONMENT"
             return 1
         fi
 
         mkdir -p "$IROHMS_DIR"/user/config
         echo "$1" > "$IROHMS_DIR"/user/config/default_env
-        echo "[irohms-env] Default environment set to $1"
+        echo "[cucr-env] Default environment set to $1"
 
     elif [[ $cmd == "init-targets" ]]
     then
         if [ -z "$1" ] || { [ -z "$IROHMS_ENV" ] && [ -z "$2" ]; }
         then
-            echo "Usage: irohms-env init-targets [ENVIRONMENT] TARGETS_GIT_URL"
+            echo "Usage: cucr-env init-targets [ENVIRONMENT] TARGETS_GIT_URL"
             return 1
         fi
 
@@ -178,7 +178,7 @@ Purged environment directory of '$env'"""
             if [ -z "$env" ]
             then
                 # This shouldn't be possible logical, should have exited after printing usage
-                echo "[irohms-env](init-targets) no enviroment set or provided"
+                echo "[cucr-env](init-targets) no enviroment set or provided"
                 return 1
             fi
             url=$1
@@ -193,11 +193,11 @@ Purged environment directory of '$env'"""
             local targets_dir_moved
             targets_dir_moved=$irohms_env_targets_dir.$(date +%F_%R)
             mv -f "$irohms_env_targets_dir" "$targets_dir_moved"
-            echo "[irohms-env] Moved old targets of environment '$env' to $targets_dir_moved"
+            echo "[cucr-env] Moved old targets of environment '$env' to $targets_dir_moved"
         fi
 
         git clone --recursive "$url" "$irohms_env_targets_dir"
-        echo "[irohms-env] cloned targets of environment '$env' from $url"
+        echo "[cucr-env] cloned targets of environment '$env' from $url"
 
     elif [[ $cmd == "targets" ]]
     then
@@ -217,7 +217,7 @@ Purged environment directory of '$env'"""
         shift
         [ -n "$env" ] || env=$IROHMS_ENV
 
-        "$IROHMS_DIR"/setup/irohms-env-config.bash "$env" "$@"
+        "$IROHMS_DIR"/setup/cucr-env-config.bash "$env" "$@"
 
         if [ "$env" == "$IROHMS_ENV" ]
         then
@@ -238,7 +238,7 @@ Purged environment directory of '$env'"""
             irohms_env_dir=$(cat "$IROHMS_DIR"/user/envs/"$env")
             cd "$irohms_env_dir" || { echo -e "Environment directory '$irohms_env_dir' (environment '$IROHMS_ENV') does not exist"; return 1; }
         else
-            echo "[irohms-env](cd) no enviroment set or provided"
+            echo "[cucr-env](cd) no enviroment set or provided"
             return 1
         fi
 
@@ -257,11 +257,11 @@ Purged environment directory of '$env'"""
         then
             echo "$IROHMS_ENV"
         else
-            echo "[irohms-env] no enviroment set"
+            echo "[cucr-env] no enviroment set"
         fi
 
     else
-        echo "[irohms-env] Unknown command: '$cmd'"
+        echo "[cucr-env] Unknown command: '$cmd'"
         return 1
     fi
 }
@@ -302,11 +302,11 @@ function _irohms-env
             if [ "$COMP_CWORD" -eq 3 ]
             then
                 local functions
-                functions=$(grep 'function ' "$IROHMS_DIR"/setup/irohms-env-config.bash | awk '{print $2}' | grep "irohms-env-")
-                functions=${functions//irohms-env-/}
+                functions=$(grep 'function ' "$IROHMS_DIR"/setup/cucr-env-config.bash | awk '{print $2}' | grep "cucr-env-")
+                functions=${functions//cucr-env-/}
                 mapfile -t COMPREPLY < <(compgen -W "$functions" -- "$cur")
             fi
         fi
     fi
 }
-complete -F _irohms-env irohms-env
+complete -F _irohms-env cucr-env

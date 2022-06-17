@@ -2,9 +2,9 @@
 IROHMS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 export IROHMS_DIR
 
-# Load irohms-env tool
+# Load cucr-env tool
 # shellcheck disable=SC1090
-source "$IROHMS_DIR"/setup/irohms-env.bash
+source "$IROHMS_DIR"/setup/cucr-env.bash
 
 # ------------------------------------------
 # Helper function for checking if all env vars are set
@@ -12,7 +12,7 @@ function _irohms-check-env-vars
 {
     [ -n "$IROHMS_DIR" ] && [ -n "$IROHMS_ENV" ] && [ -n "$IROHMS_ENV_DIR" ] \
        && [ -n "$IROHMS_BIN" ] && [ -n "$IROHMS_ENV_TARGETS_DIR" ] && return 0
-    echo "[irohms] Not all needed environment variables are set."
+    echo "[cucr] Not all needed environment variables are set."
     return 1
 }
 export -f _irohms-check-env-vars
@@ -30,7 +30,7 @@ then
 
     if [ ! -f "$IROHMS_DIR"/user/envs/"$IROHMS_ENV" ]
     then
-        echo "[irohms] No such environment: '$IROHMS_ENV'"
+        echo "[cucr] No such environment: '$IROHMS_ENV'"
         return 1
     fi
 fi
@@ -40,7 +40,7 @@ export IROHMS_ENV_DIR
 
 if [ ! -d "$IROHMS_ENV_DIR" ]
 then
-    echo "[irohms] Environment directory '$IROHMS_ENV_DIR' (environment '$IROHMS_ENV') does not exist"
+    echo "[cucr] Environment directory '$IROHMS_ENV_DIR' (environment '$IROHMS_ENV') does not exist"
     return 1
 fi
 
@@ -48,7 +48,7 @@ export IROHMS_ENV_TARGETS_DIR=$IROHMS_ENV_DIR/.env/targets
 
 if [ ! -d "$IROHMS_ENV_TARGETS_DIR" ]
 then
-    echo "[irohms] Targets directory '$IROHMS_ENV_TARGETS_DIR' (environment '$IROHMS_ENV') does not exist"
+    echo "[cucr] Targets directory '$IROHMS_ENV_TARGETS_DIR' (environment '$IROHMS_ENV') does not exist"
     return 1
 fi
 
@@ -61,12 +61,12 @@ fi
 # -----------------------------------------
 # Load all the bash functions
 # shellcheck disable=SC1090
-source "$IROHMS_DIR"/setup/irohms-functions.bash
+source "$IROHMS_DIR"/setup/cucr-functions.bash
 
-if [ -f "$IROHMS_DIR"/setup/irohms-misc.bash ]
+if [ -f "$IROHMS_DIR"/setup/cucr-misc.bash ]
 then
     # shellcheck disable=SC1090
-    source "$IROHMS_DIR"/setup/irohms-misc.bash
+    source "$IROHMS_DIR"/setup/cucr-misc.bash
 fi
 
 export IROHMS_BIN=$IROHMS_DIR/bin

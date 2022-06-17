@@ -26,7 +26,7 @@ function _list_subdirs
 #                                       APT MIRROR SELECTION
 # ----------------------------------------------------------------------------------------------------
 
-function irohms-apt-select-mirror
+function cucr-apt-select-mirror
 {
     # Function to set the fastest APT mirror
     # It uses apt-select to generate a new sources.list, based on the current one.
@@ -108,12 +108,12 @@ function _irohms-git-clean-local
         then
             force_remove=true
         else
-            echo -e "\e[31m[irohms-git-clean-local][Error] Unknown input argument '$1'. Only supported argument is '--force-remove' to forcefully remove unmerged stale branches\e[0m"
+            echo -e "\e[31m[cucr-git-clean-local][Error] Unknown input argument '$1'. Only supported argument is '--force-remove' to forcefully remove unmerged stale branches\e[0m"
             return 1
         fi
     fi
 
-    git fetch -p || { echo -e "\e[31m[irohms-git-clean-local] 'git fetch -p' failed in '$repo'.\e[0m"; return 1; }
+    git fetch -p || { echo -e "\e[31m[cucr-git-clean-local] 'git fetch -p' failed in '$repo'.\e[0m"; return 1; }
 
     stale_branches=$(git branch --list --format "%(if:equals=[gone])%(upstream:track)%(then)%(refname)%(end)" \
 | sed 's,^refs/heads/,,;/^$/d')
@@ -131,7 +131,7 @@ function _irohms-git-clean-local
 
         if [ ! $error_code -eq 0 ]
         then
-            echo -e "\e[31m[irohms-git-clean-local] Error pulling upstream on default branch of repository '$repo'. Cancelling branch cleanup.\e[0m"
+            echo -e "\e[31m[cucr-git-clean-local] Error pulling upstream on default branch of repository '$repo'. Cancelling branch cleanup.\e[0m"
             return 1
         fi
     fi
@@ -163,7 +163,7 @@ function _irohms-git-clean-local
     done
 
     # Removal of unmerged stale branches. Not a default operation with the high
-    # level command irohms-git-clean-local
+    # level command cucr-git-clean-local
     if [ -n "$unmerged_stale_branches" ]
     then
         unmerged_stale_branches=$(echo "$unmerged_stale_branches" | sed -e 's/^[[:space:]]*//' | tr " " "\n")
@@ -178,7 +178,7 @@ function _irohms-git-clean-local
             echo -e "------------------------------"
             echo -e "$unmerged_stale_branches"
             echo
-            echo -e "[irohms-git-clean-local] To remove these branches call the command with '--force-remove'"
+            echo -e "[cucr-git-clean-local] To remove these branches call the command with '--force-remove'"
             echo -e "\e[0m"
 
             return 0
@@ -196,7 +196,7 @@ function _irohms-git-clean-local
 
             if [ ! $error_code -eq 0 ]
             then
-                echo -e "\e[31m[irohms-git-clean-local] In repository '$repo' error deleting branch: $unmerged_stale_branch\e[0m"
+                echo -e "\e[31m[cucr-git-clean-local] In repository '$repo' error deleting branch: $unmerged_stale_branch\e[0m"
             else
                 echo -e "\e[36m$unmerged_stale_branch"
             fi
@@ -204,20 +204,20 @@ function _irohms-git-clean-local
     fi
 
     echo
-    echo -e "[irohms-git-clean-local] Branch cleanup of repository '$repo' complete\e[0m"
+    echo -e "[cucr-git-clean-local] Branch cleanup of repository '$repo' complete\e[0m"
     return 0
 }
 
-function irohms-git-clean-local
+function cucr-git-clean-local
 {
-    # Run _irohms-git-clean-local on irohms-env, irohms-env-targets and all current environment
+    # Run _irohms-git-clean-local on cucr-env, cucr-env-targets and all current environment
     # repositories safely when no input exists
 
     if [ -n "$1" ]
     then
         if [ "$1" != "--force-remove" ]
         then
-            echo -e "[irohms-git-clean-local][Error] Unknown input argument '$1'. Only supported argument is '--force-remove' to forcefully remove unmerged stale branches"
+            echo -e "[cucr-git-clean-local][Error] Unknown input argument '$1'. Only supported argument is '--force-remove' to forcefully remove unmerged stale branches"
             return 1
         fi
     fi
@@ -232,7 +232,7 @@ function __irohms-git-clean-local
     # shellcheck disable=SC2178
     mapfile -t COMPREPLY < <(compgen -W "$(echo -e "$options")" -- "$cur")
 }
-complete -F __irohms-git-clean-local irohms-git-clean-local
+complete -F __irohms-git-clean-local cucr-git-clean-local
 complete -F __irohms-git-clean-local _irohms-git-clean-local
 
 # ----------------------------------------------------------------------------------------------------
@@ -320,10 +320,10 @@ function _git_https_or_ssh
 export -f _git_https_or_ssh # otherwise not available in sourced files
 
 # ----------------------------------------------------------------------------------------------------
-#                                            IROHMS-MAKE
+#                                            CUCR-MAKE
 # ----------------------------------------------------------------------------------------------------
 
-function irohms-make
+function cucr-make
 {
     if [ -n "$IROHMS_ROS_DISTRO" ] && [ -d "$IROHMS_SYSTEM_DIR" ]
     then
@@ -348,7 +348,7 @@ function irohms-make
         esac
     fi
 }
-export -f irohms-make
+export -f cucr-make
 
 function _irohms-make
 {
@@ -357,9 +357,9 @@ function _irohms-make
     mapfile -t COMPREPLY < <(compgen -W "$(_list_subdirs "$IROHMS_SYSTEM_DIR"/src)" -- "$cur")
 }
 
-complete -F _irohms-make irohms-make
+complete -F _irohms-make cucr-make
 
-function irohms-make-dev
+function cucr-make-dev
 {
     if [ -n "$IROHMS_ROS_DISTRO" ] && [ -d "$IROHMS_DEV_DIR" ]
     then
@@ -384,7 +384,7 @@ function irohms-make-dev
         esac
     fi
 }
-export -f irohms-make-dev
+export -f cucr-make-dev
 
 function _irohms-make-dev
 {
@@ -392,13 +392,13 @@ function _irohms-make-dev
 
     mapfile -t COMPREPLY < <(compgen -W "$(_list_subdirs "$IROHMS_DEV_DIR"/src)" -- "$cur")
 }
-complete -F _irohms-make-dev irohms-make-dev
+complete -F _irohms-make-dev cucr-make-dev
 
 # ----------------------------------------------------------------------------------------------------
-#                                              IROHMS-DEV
+#                                              CUCR-DEV
 # ----------------------------------------------------------------------------------------------------
 
-function irohms-dev
+function cucr-dev
 {
     if [ -z "$1" ]
     then
@@ -410,10 +410,10 @@ function irohms-dev
     do
         if [ ! -d "$IROHMS_SYSTEM_DIR"/src/"$pkg" ]
         then
-            echo "[irohms-dev] '$pkg' does not exist in the system workspace."
+            echo "[cucr-dev] '$pkg' does not exist in the system workspace."
         elif [ -d "$IROHMS_DEV_DIR"/src/"$pkg" ]
         then
-            echo "[irohms-dev] '$pkg' is already in the dev workspace."
+            echo "[cucr-dev] '$pkg' is already in the dev workspace."
         else
             ln -s "$IROHMS_SYSTEM_DIR"/src/"$pkg" "$IROHMS_DEV_DIR"/src/"$pkg"
         fi
@@ -423,7 +423,7 @@ function irohms-dev
     rospack profile &> /dev/null
 }
 
-function irohms-dev-clean
+function cucr-dev-clean
 {
     for f in $(_list_subdirs "$IROHMS_DEV_DIR"/src)
     do
@@ -448,10 +448,10 @@ function _irohms-dev
 
     mapfile -t COMPREPLY < <(compgen -W "$(_list_subdirs "$IROHMS_SYSTEM_DIR"/src)" -- "$cur")
 }
-complete -F _irohms-dev irohms-dev
+complete -F _irohms-dev cucr-dev
 
 # ----------------------------------------------------------------------------------------------------
-#                                             IROHMS-STATUS
+#                                             CUCR-STATUS
 # ----------------------------------------------------------------------------------------------------
 
 function _robocup_branch_allowed
@@ -574,16 +574,16 @@ function _irohms-dir-status
 
 # ----------------------------------------------------------------------------------------------------
 
-function irohms-status
+function cucr-status
 {
     _irohms-dir-status "$IROHMS_SYSTEM_DIR"/src
-    _irohms-repo-status "irohms-env" "$IROHMS_DIR"
-    _irohms-repo-status "irohms-env-targets" "$IROHMS_ENV_TARGETS_DIR"
+    _irohms-repo-status "cucr-env" "$IROHMS_DIR"
+    _irohms-repo-status "cucr-env-targets" "$IROHMS_ENV_TARGETS_DIR"
 }
 
 # ----------------------------------------------------------------------------------------------------
 
-function irohms-git-status
+function cucr-git-status
 {
     for pkg_dir in "$IROHMS_SYSTEM_DIR"/src/*/
     do
@@ -598,10 +598,10 @@ function irohms-git-status
 }
 
 # ----------------------------------------------------------------------------------------------------
-#                                              IROHMS-REVERT
+#                                              CUCR-REVERT
 # ----------------------------------------------------------------------------------------------------
 
-function irohms-revert
+function cucr-revert
 {
     human_time="$*"
 
@@ -633,10 +633,10 @@ function irohms-revert
 }
 
 # ----------------------------------------------------------------------------------------------------
-#                                              IROHMS-REVERT-UNDO
+#                                              CUCR-REVERT-UNDO
 # ----------------------------------------------------------------------------------------------------
 
-function irohms-revert-undo
+function cucr-revert-undo
 {
     for pkg_dir in "$IROHMS_SYSTEM_DIR"/src/*/
     do
@@ -649,11 +649,11 @@ function irohms-revert-undo
             rm "$pkg_dir/.do_not_commit_this"
         fi
     done
-    irohms-git-status
+    cucr-git-status
 }
 
 # ----------------------------------------------------------------------------------------------------
-#                                              IROHMS-GET
+#                                              CUCR-GET
 # ----------------------------------------------------------------------------------------------------
 
 function _show_file
@@ -712,7 +712,7 @@ function __generate_setup_file
 function _generate_setup_file
 {
     mkdir -p "$IROHMS_ENV_DIR"/.env/setup
-    echo "# This file was auto-generated by irohms-get. Do not change this file." > "$IROHMS_ENV_DIR"/.env/setup/target_setup.bash
+    echo "# This file was auto-generated by cucr-get. Do not change this file." > "$IROHMS_ENV_DIR"/.env/setup/target_setup.bash
 
     local irohms_dependencies_dir="$IROHMS_ENV_DIR"/.env/dependencies
 
@@ -748,11 +748,11 @@ function _remove_recursively
         if [[ -n $(cat "$irohms_dependencies_on_dir"/"$target") ]]
         then
             # depend-on is not empty, so removing the installed status
-            echo "[irohms-get] Other targets still depend on $target, so ignoring it"
+            echo "[cucr-get] Other targets still depend on $target, so ignoring it"
             return 0
         else
             # depend-on is empty, so remove it and continue to actual removing of the target
-            echo "[irohms-get] Deleting empty depend-on file of: $target"
+            echo "[cucr-get] Deleting empty depend-on file of: $target"
             rm -f "$irohms_dependencies_on_dir"/"$target"
         fi
     fi
@@ -773,7 +773,7 @@ function _remove_recursively
                     [[ $line != "$target" ]] && echo "$line"
                 done <"$dep_dep_on_file" >"$tmp_file"
                 mv "$tmp_file" "$dep_dep_on_file"
-                echo "[irohms-get] Removed '$target' from depend-on file of '$dep'"
+                echo "[cucr-get] Removed '$target' from depend-on file of '$dep'"
             else
                 echo "$target depends on $dep, so $dep_dep_on_file should exist with $target in it"
                 error_code=1
@@ -791,21 +791,21 @@ function _remove_recursively
         done < "$irohms_dependencies_dir"/"$target"
         rm -f "$irohms_dependencies_dir"/"$target"
     else
-        echo "[irohms-get] No depencies file exist for target: $target"
+        echo "[cucr-get] No depencies file exist for target: $target"
     fi
 
-    echo "[irohms-get] Fully uninstalled $target and its dependencies"
+    echo "[cucr-get] Fully uninstalled $target and its dependencies"
     return $error_code
 }
 
-function irohms-get
+function cucr-get
 {
     if [ -z "$1" ]
     then
         # shellcheck disable=SC1078,SC1079
-        echo """irohms-get is a tool for installing and removing packages.
+        echo """cucr-get is a tool for installing and removing packages.
 
-    Usage: irohms-get COMMAND [ARG1 ARG2 ...]
+    Usage: cucr-get COMMAND [ARG1 ARG2 ...]
 
     Possible commands:
 
@@ -846,7 +846,7 @@ function irohms-get
 
     if [[ "$cmd" =~ ^(install|remove)$ && -z "$1" ]]
     then
-       echo "Usage: irohms-get $cmd TARGET [TARGET2 ...]"
+       echo "Usage: cucr-get $cmd TARGET [TARGET2 ...]"
        return 1
     fi
 
@@ -861,7 +861,7 @@ function irohms-get
 
                 if [ -z "$(find "$IROHMS_ENV_DIR"/.env/dependencies -maxdepth 1 -name "$target" -type f -printf "%P ")" ]
                 then
-                    echo "[irohms-get] Package '$target' is not installed."
+                    echo "[cucr-get] Package '$target' is not installed."
                     error_code=1
                 fi
             done
@@ -869,7 +869,7 @@ function irohms-get
 
         if [ $error_code -eq 0 ]
         then
-            "$IROHMS_DIR"/installer/irohms-install.bash "$cmd" "$@"
+            "$IROHMS_DIR"/installer/cucr-install.bash "$cmd" "$@"
             error_code=$?
             if [ $error_code -eq 0 ]
             then
@@ -889,7 +889,7 @@ function irohms-get
             resolved_targets="$(find "$irohms_installed_dir" -maxdepth 1 -name "$target" -type f -printf "%P ")"
             if [ -z "$resolved_targets" ]
             then
-                echo "[irohms-get] Package '$target' is not installed."
+                echo "[cucr-get] Package '$target' is not installed."
                 error_code=1
             else
                 targets_to_remove="${targets_to_remove:+$targets_to_remove }$resolved_targets"
@@ -899,14 +899,14 @@ function irohms-get
         if [ $error_code -gt 0 ]
         then
             echo ""
-            echo "[irohms-get] No packages where removed."
+            echo "[cucr-get] No packages where removed."
             return $error_code;
         fi
 
         if [ -f /tmp/irohms_get_remove_lock ]
         then
-            echo "[irohms-get] Can't execute 'remove' as an other run is still busy"
-            echo "[irohms-get] If this keeps happening, excute: rm /tmp/irohms_get_remove_lock"
+            echo "[cucr-get] Can't execute 'remove' as an other run is still busy"
+            echo "[cucr-get] If this keeps happening, excute: rm /tmp/irohms_get_remove_lock"
             return 1
         fi
 
@@ -919,17 +919,17 @@ function irohms-get
             if [ $target_error -gt 0 ]
             then
                 error_code=1
-                echo "[irohms-get] Problems during uninstalling $target"
+                echo "[cucr-get] Problems during uninstalling $target"
             else
                 rm "$irohms_installed_dir"/"$target"
-                echo "[irohms-get] Succesfully uninstalled: $target"
+                echo "[cucr-get] Succesfully uninstalled: $target"
             fi
         done
 
         if [ $error_code -eq 0 ]
         then
-            echo "[irohms-get] Re-generating the target setup file"
-            _generate_setup_file
+            echo "[cucr-get] Re-generating the target setup file"
+            _irohms_generate_setup_file
         fi
 
         rm /tmp/irohms_get_remove_lock
@@ -937,9 +937,9 @@ function irohms-get
         echo ""
         if [ -n "$2" ]
         then
-            echo "[irohms-get] The packages were removed from the 'installed list' but still need to be deleted from your workspace."
+            echo "[cucr-get] The packages were removed from the 'installed list' but still need to be deleted from your workspace."
         else
-            echo "[irohms-get] The package was removed from the 'installed list' but still needs to be deleted from your workspace."
+            echo "[cucr-get] The package was removed from the 'installed list' but still needs to be deleted from your workspace."
         fi
     elif [[ $cmd == "list-installed" ]]
     then
@@ -953,7 +953,7 @@ function irohms-get
     then
         if [ -z "$1" ]
         then
-            echo "[irohms-get](show) Provide at least one target name"
+            echo "[cucr-get](show) Provide at least one target name"
             return 1
         fi
         local firsttarget=true
@@ -965,7 +965,7 @@ function irohms-get
             fi
             if [ ! -d "$IROHMS_ENV_TARGETS_DIR"/"$target" ]
             then
-                echo "[irohms-get](show) '$target' is not a valid target"
+                echo "[cucr-get](show) '$target' is not a valid target"
                 firsttarget=false
                 continue
             fi
@@ -1010,9 +1010,9 @@ function irohms-get
 
     elif [[ $cmd == "dep" ]]
     then
-        "$IROHMS_DIR"/installer/irohms-get-dep.bash "$@"
+        "$IROHMS_DIR"/installer/cucr-get-dep.bash "$@"
     else
-        echo "[irohms-get] Unknown command: '$cmd'"
+        echo "[cucr-get] Unknown command: '$cmd'"
         return 1
     fi
 }
@@ -1060,23 +1060,23 @@ function _irohms-get
         fi
     fi
 }
-complete -o nospace -F _irohms-get irohms-get
+complete -o nospace -F _irohms-get cucr-get
 
 # ----------------------------------------------------------------------------------------------------
-#                                             IROHMS-CHECKOUT
+#                                             CUCR-CHECKOUT
 # ----------------------------------------------------------------------------------------------------
 
-function irohms-checkout
+function cucr-checkout
 {
     if [ -z "$1" ]
     then
         # shellcheck disable=SC1078,SC1079
         echo """Switches all packages to the given branch, if such a branch exists in that package. Usage:
 
-    irohms-checkout BRANCH-NAME [option]
+    cucr-checkout BRANCH-NAME [option]
 
     options:
-    --only-pks: irohms-env is not checked-out to the specified branch
+    --only-pks: cucr-env is not checked-out to the specified branch
 
 """
         return 1
@@ -1105,12 +1105,12 @@ function irohms-checkout
         pkg=${pkg_dir#$IROHMS_SYSTEM_DIR/src/}
         if [ -z "$NO_IROHMS_ENV" ]
         then
-            if [[ $pkg =~ .irohms ]]
+            if [[ $pkg =~ .cucr ]]
             then
-                pkg="irohms-env"
+                pkg="cucr-env"
             elif [[ $pkg =~ targets ]]
             then
-                pkg="irohms-env-targets"
+                pkg="cucr-env-targets"
             fi
         fi
 
@@ -1150,35 +1150,35 @@ function irohms-checkout
 }
 
 # ----------------------------------------------------------------------------------------------------
-#                                              IROHMS-DATA
+#                                              CUCR-DATA
 # ----------------------------------------------------------------------------------------------------
 
 # shellcheck disable=SC1090
-source "$IROHMS_DIR"/setup/irohms-data.bash
+source "$IROHMS_DIR"/setup/cucr-data.bash
 
 # ----------------------------------------------------------------------------------------------------
-#                                             IROHMS-ROBOCUP
+#                                             CUCR-ROBOCUP
 # ----------------------------------------------------------------------------------------------------
 
 export IROHMS_ROBOCUP_BRANCH="rwc2019"
 
 function _irohms-repos-do
 {
-    # Evaluates the command of the input for irohms-env, irohms-env-targets and all repo's of irohms-robotics.
+    # Evaluates the command of the input for cucr-env, cucr-env-targets and all repo's of cucr-robotics.
     # The input can be multiple arguments, but if the input consists of multiple commands
     # seperated by ';' or '&&' the input needs to be captured in a string.
 
     local mem_pwd=$PWD
 
     { [ -n "$IROHMS_DIR" ] && cd "$IROHMS_DIR"; } || { echo -e "IROHMS_DIR '$IROHMS_DIR' does not exist"; return 1; }
-    echo -e "\033[1m[irohms-env]\033[0m"
+    echo -e "\033[1m[cucr-env]\033[0m"
     eval "$@"
 
     { [ -n "$IROHMS_ENV_TARGETS_DIR" ] && cd "$IROHMS_ENV_TARGETS_DIR"; } || { echo -e "IROHMS_ENV_TARGETS_DIR '$IROHMS_ENV_TARGETS_DIR' does not exist"; return 1; }
-    echo -e "\033[1m[irohms-env-targets]\033[0m"
+    echo -e "\033[1m[cucr-env-targets]\033[0m"
     eval "$@"
 
-    local repos_dir=$IROHMS_ENV_DIR/repos/github.com/irohms-robotics
+    local repos_dir=$IROHMS_ENV_DIR/repos/github.com/cucr-robotics
 
     local fs
     fs=$(ls "$repos_dir")
@@ -1248,15 +1248,15 @@ For example:
     echo -e "remote '$remote' added with url: $server$url_extension"
 }
 
-function irohms-add-git-remote
+function cucr-add-git-remote
 {
     if [ -z "$2" ]
     then
-        echo "Usage: irohms-add-git-remote REMOTE SERVER
+        echo "Usage: cucr-add-git-remote REMOTE SERVER
 
 For example:
 
-    irohms-add-git-remote roboticssrv amigo@roboticssrv.local:
+    cucr-add-git-remote roboticssrv amigo@roboticssrv.local:
         "
         return 1
     fi
@@ -1354,15 +1354,15 @@ For example:
     fi
 }
 
-function irohms-remote-checkout
+function cucr-remote-checkout
 {
     if [ -z "$2" ]
     then
-        echo "Usage: irohms-remote-checkout REMOTE BRANCH
+        echo "Usage: cucr-remote-checkout REMOTE BRANCH
 
 For example:
 
-    irohms-remote-checkout roboticssrv robocup
+    cucr-remote-checkout roboticssrv robocup
         "
         return 1
     fi
@@ -1398,9 +1398,9 @@ For example:
     fi
 }
 
-function irohms-robocup-remote-checkout
+function cucr-robocup-remote-checkout
 {
-    # same functionality as irohms-remote-checkout, but no arguments needed
+    # same functionality as cucr-remote-checkout, but no arguments needed
     # doesn't perform a checkout, when current branch is already setup
     # to the roboticssrv
     local remote="roboticssrv"
@@ -1444,10 +1444,10 @@ For example:
     fi
 }
 
-function irohms-robocup-change-remote
+function cucr-robocup-change-remote
 {
     # This changes the remote of the 'BRANCH' branch to 'REMOTE'
-    # After this, you local working copies may be behind what was fetched from REMOTE, so run a $ irohms-get update
+    # After this, you local working copies may be behind what was fetched from REMOTE, so run a $ cucr-get update
 
     # for packages that have a REMOTE as a remote:
     # do a git fetch origin: git fetch
@@ -1455,11 +1455,11 @@ function irohms-robocup-change-remote
 
     if [ -z "$2" ]
     then
-        echo "Usage: irohms-robocup-change-remote BRANCH REMOTE
+        echo "Usage: cucr-robocup-change-remote BRANCH REMOTE
 
 For example:
 
-    irohms-robocup-change-remote robocup origin
+    cucr-robocup-change-remote robocup origin
         "
         return 1
     fi
@@ -1470,14 +1470,14 @@ For example:
     _irohms-repos-do "_irohms-robocup-change-remote $branch $remote"
 }
 
-function irohms-robocup-ssh-copy-id
+function cucr-robocup-ssh-copy-id
 {
     ssh-copy-id amigo@roboticssrv.local
 }
 
 function _allow_robocup_branch
 {
-    # allow IROHMS_ROBOCUP_BRANCH as branch in irohms-status
+    # allow IROHMS_ROBOCUP_BRANCH as branch in cucr-status
     if [ ! -f "$IROHMS_DIR"/user/config/robocup ]
     then
         echo $IROHMS_ROBOCUP_BRANCH > "$IROHMS_DIR"/user/config/robocup
@@ -1486,33 +1486,33 @@ function _allow_robocup_branch
 
 function _disallow_robocup_branch
 {
-    # disallow IROHMS_ROBOCUP_BRANCH as branch in irohms-status
+    # disallow IROHMS_ROBOCUP_BRANCH as branch in cucr-status
     if [ -f "$IROHMS_DIR"/user/config/robocup ]
     then
         rm "$IROHMS_DIR"/user/config/robocup
     fi
 }
 
-function irohms-robocup-set-github
+function cucr-robocup-set-github
 {
-    irohms-robocup-change-remote $IROHMS_ROBOCUP_BRANCH origin
+    cucr-robocup-change-remote $IROHMS_ROBOCUP_BRANCH origin
     _irohms-git-checkout-default-branch
     _disallow_robocup_branch
 }
 
-function irohms-robocup-set-roboticssrv
+function cucr-robocup-set-roboticssrv
 {
-    irohms-add-git-remote roboticssrv amigo@roboticssrv.local:
-    irohms-robocup-remote-checkout
+    cucr-add-git-remote roboticssrv amigo@roboticssrv.local:
+    cucr-robocup-remote-checkout
     _allow_robocup_branch
 }
 
-function irohms-robocup-set-timezone-robocup
+function cucr-robocup-set-timezone-robocup
 {
     sudo timedatectl set-timezone Australia/Sydney
 }
 
-function irohms-robocup-set-timezone-home
+function cucr-robocup-set-timezone-home
 {
     sudo timedatectl set-timezone Europe/Amsterdam
 }
@@ -1527,9 +1527,9 @@ function _ping_bool
     fi
 }
 
-function irohms-robocup-install-package
+function cucr-robocup-install-package
 {
-    local repos_dir=$IROHMS_ENV_DIR/repos/github.com/irohms-robotics
+    local repos_dir=$IROHMS_ENV_DIR/repos/github.com/cucr-robotics
     local repo_dir=$repos_dir/${1}.git
 
     local mem_pwd=$PWD
@@ -1541,14 +1541,14 @@ function irohms-robocup-install-package
     # If directory already exists, return
     [ -d "$repo_dir" ] && return 0
 
-    git clone "$server"irohms-robotics/"$1".git "$repo_dir"
+    git clone "$server"cucr-robotics/"$1".git "$repo_dir"
 
     [ ! -d "$repo_dir" ] && return 0
     # shellcheck disable=SC2164
     cd "$repo_dir"
 
     git remote rename origin $remote
-    git remote add origin https://github.com/irohms-robotics/"$1".git
+    git remote add origin https://github.com/cucr-robotics/"$1".git
 
     # shellcheck disable=SC2164
     cd "$mem_pwd"
@@ -1580,14 +1580,14 @@ function irohms-robocup-install-package
     touch "$IROHMS_ENV_DIR"/.env/installed/ros-"$1"
 }
 
-function irohms-robocup-update
+function cucr-robocup-update
 {
     _irohms-repos-do "git pull --ff-only"
 
     # Copy rsettings file
     if [ "$ROBOT_REAL" != "true" ]
     then
-        rsettings_file=$IROHMS_ENV_TARGETS_DIR/irohms-common/rsettings_file
+        rsettings_file=$IROHMS_ENV_TARGETS_DIR/cucr-common/rsettings_file
         if [ -f "$rsettings_file" ]
         then
             cp "$rsettings_file" "$IROHMS_DIR"/.rsettings
@@ -1595,12 +1595,12 @@ function irohms-robocup-update
     fi
 }
 
-function irohms-robocup-set-apt-get-proxy
+function cucr-robocup-set-apt-get-proxy
 {
-    sudo bash -c "echo 'Acquire::http::Proxy \"http://roboticssrv.wtb.irohms.nl:3142\";' > /etc/apt/apt.conf.d/01proxy"
+    sudo bash -c "echo 'Acquire::http::Proxy \"http://roboticssrv.wtb.cucr.nl:3142\";' > /etc/apt/apt.conf.d/01proxy"
 }
 
-function irohms-robocup-unset-apt-get-proxy
+function cucr-robocup-unset-apt-get-proxy
 {
     sudo rm /etc/apt/apt.conf.d/01proxy
 }
