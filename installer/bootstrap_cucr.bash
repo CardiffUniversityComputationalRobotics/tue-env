@@ -54,11 +54,11 @@ then
         then
             if [ -n "$BRANCH" ]
             then
-                echo -e "[cucr-env](bootstrap) Cloning cucr-env repository (tue-env from juandhv fork) with branch: $BRANCH at commit: $COMMIT"
-                git clone -q --single-branch --branch "$BRANCH" git@github.com:juandhv/tue-env.git ~/.cucr
+                echo -e "[cucr-env](bootstrap) Cloning cucr-env repository (tue-env from CardiffUniversityComputationalRobotics fork) with branch: $BRANCH at commit: $COMMIT"
+                git clone -q --single-branch --branch "$BRANCH" git@github.com:CardiffUniversityComputationalRobotics/tue-env.git ~/.cucr
             else
-                echo -e "[cucr-env](bootstrap) Cloning cucr-env repository (tue-env from juandhv fork) with default branch at commit: $COMMIT"
-                git clone -q --single-branch git@github.com:juandhv/tue-env.git ~/.cucr
+                echo -e "[cucr-env](bootstrap) Cloning cucr-env repository (tue-env from CardiffUniversityComputationalRobotics fork) with default branch at commit: $COMMIT"
+                git clone -q --single-branch git@github.com:CardiffUniversityComputationalRobotics/tue-env.git ~/.cucr
             fi
             git -C ~/.cucr reset --hard "$COMMIT"
         else
@@ -67,14 +67,14 @@ then
         fi
     else
         echo -e "[cucr-env](bootstrap) Testing Pull Request"
-        git clone -q --depth=10 git@github.com:juandhv/tue-env.git ~/.cucr
+        git clone -q --depth=10 git@github.com:CardiffUniversityComputationalRobotics/tue-env.git ~/.cucr
         git -C ~/.cucr fetch origin pull/"$PULL_REQUEST"/merge:PULLREQUEST
         git -C ~/.cucr checkout PULLREQUEST
     fi
 else
     # Update installer
-    echo -e "[cucr-env](bootstrap) Cloning cucr-env repository (tue-env from juandhv fork)"
-    git clone --branch cucr git@github.com:juandhv/tue-env.git ~/.cucr
+    echo -e "[cucr-env](bootstrap) Cloning cucr-env repository (tue-env from CardiffUniversityComputationalRobotics fork)"
+    git clone --branch cucr git@github.com:CardiffUniversityComputationalRobotics/tue-env.git ~/.cucr
 fi
 
 # Source the installer commands
@@ -86,7 +86,7 @@ source ~/.cucr/setup_cucr.bash
 mkdir -p ~/ros/$CUCR_ROS_DISTRO
 
 # Initialize ros environment directory incl. targets
-cucr-env init ros-$CUCR_ROS_DISTRO ~/ros/$CUCR_ROS_DISTRO git@github.com:juandhv/tue-env-targets.git
+cucr-env init ros-$CUCR_ROS_DISTRO ~/ros/$CUCR_ROS_DISTRO git@github.com:CardiffUniversityComputationalRobotics/tue-env.git
 
 # Set the correct ROS version for this environment
 echo "export CUCR_ROS_DISTRO=$CUCR_ROS_DISTRO" >> ~/ros/$CUCR_ROS_DISTRO/.env/setup/user_setup.bash
