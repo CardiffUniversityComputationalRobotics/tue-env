@@ -9,7 +9,7 @@ Package manager that can be used to install (ROS) dependencies
 Standard cucr-env installation with targets from [cucr-env-targets](https://github.com/juandhv/tue-env-targets)
 
 ```bash
-source <(wget -O - https://raw.githubusercontent.com/juandhv/tue-env/cucr/installer/bootstrap_cucr.bash)
+source <(wget -O - https://raw.githubusercontent.com/CardiffUniversityComputationalRobotics/tue-env/cucr/installer/bootstrap_cucr.bash)
 cucr-get install cucr-dev #or
 cucr-get install cucr-dev-full #cucr-dev plus extra tools
 cucr-make

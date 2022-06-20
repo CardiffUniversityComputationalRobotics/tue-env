@@ -67,7 +67,7 @@ then
     # shellcheck disable=SC1078,SC1079
     echo """To setup the default cucr-env targets repository do,
 
-cucr-env init-targets git@github.com:juandhv/tue-env-targets.git
+cucr-env init-targets git@github.com:CardiffUniversityComputationalRobotics/tue-env.git
 """
     exit 1
 else
