@@ -8,7 +8,7 @@ import yaml
 
 from lsb_release import get_distro_information
 
-ros_release = environ["IROHMS_ROS_DISTRO"]
+ros_release = environ["CUCR_ROS_DISTRO"]
 ubuntu_release = get_distro_information()["CODENAME"]
 
 

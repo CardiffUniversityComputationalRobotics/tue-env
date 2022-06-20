@@ -33,7 +33,7 @@ function cucr-env
     shift
 
     # Make sure the correct directories are there
-    mkdir -p "$IROHMS_DIR"/user/envs
+    mkdir -p "$CUCR_DIR"/user/envs
 
     if [[ $cmd == "init" ]]
     then
@@ -47,7 +47,7 @@ function cucr-env
         [ -z "$2" ] || dir=$2
         dir="$( realpath "$dir" )"
 
-        if [ -f "$IROHMS_DIR"/user/envs/"$1" ]
+        if [ -f "$CUCR_DIR"/user/envs/"$1" ]
         then
             echo "[cucr-env] Environment '$1' already exists"
             return 1
@@ -59,7 +59,7 @@ function cucr-env
             return 1
         fi
 
-        echo "$dir" > "$IROHMS_DIR"/user/envs/"$1"
+        echo "$dir" > "$CUCR_DIR"/user/envs/"$1"
         # Create .env and .env/setup directories
         mkdir -p "$dir"/.env/setup
         echo -e "#! /usr/bin/env bash\n" > "$dir"/.env/setup/user_setup.bash
@@ -106,14 +106,14 @@ options:
             done
         fi
 
-        if [ ! -f "$IROHMS_DIR"/user/envs/"$env" ]
+        if [ ! -f "$CUCR_DIR"/user/envs/"$env" ]
         then
             echo "[cucr-env] No such environment: '$env'."
             return 1
         fi
 
-        dir=$(cat "$IROHMS_DIR"/user/envs/"$env")
-        rm "$IROHMS_DIR"/user/envs/"$env"
+        dir=$(cat "$CUCR_DIR"/user/envs/"$env")
+        rm "$CUCR_DIR"/user/envs/"$env"
 
         if [ $PURGE == "false" ]
         then
@@ -137,18 +137,18 @@ Purged environment directory of '$env'"""
             return 1
         fi
 
-        if [ ! -f "$IROHMS_DIR"/user/envs/"$1" ]
+        if [ ! -f "$CUCR_DIR"/user/envs/"$1" ]
         then
             echo "[cucr-env] No such environment: '$1'."
             return 1
         fi
 
-        export IROHMS_ENV=$1
-        IROHMS_ENV_DIR=$(cat "$IROHMS_DIR"/user/envs/"$1")
-        export IROHMS_ENV_DIR
+        export CUCR_ENV=$1
+        CUCR_ENV_DIR=$(cat "$CUCR_DIR"/user/envs/"$1")
+        export CUCR_ENV_DIR
 
         # shellcheck disable=SC1090
-        source "$IROHMS_DIR"/setup.bash
+        source "$CUCR_DIR"/setup.bash
 
     elif [[ $cmd == "set-default" ]]
     then
@@ -158,13 +158,13 @@ Purged environment directory of '$env'"""
             return 1
         fi
 
-        mkdir -p "$IROHMS_DIR"/user/config
-        echo "$1" > "$IROHMS_DIR"/user/config/default_env
+        mkdir -p "$CUCR_DIR"/user/config
+        echo "$1" > "$CUCR_DIR"/user/config/default_env
         echo "[cucr-env] Default environment set to $1"
 
     elif [[ $cmd == "init-targets" ]]
     then
-        if [ -z "$1" ] || { [ -z "$IROHMS_ENV" ] && [ -z "$2" ]; }
+        if [ -z "$1" ] || { [ -z "$CUCR_ENV" ] && [ -z "$2" ]; }
         then
             echo "Usage: cucr-env init-targets [ENVIRONMENT] TARGETS_GIT_URL"
             return 1
@@ -174,7 +174,7 @@ Purged environment directory of '$env'"""
         local url=$2
         if [ -z "$url" ]
         then
-            env=$IROHMS_ENV
+            env=$CUCR_ENV
             if [ -z "$env" ]
             then
                 # This shouldn't be possible logical, should have exited after printing usage
@@ -184,59 +184,59 @@ Purged environment directory of '$env'"""
             url=$1
         fi
 
-        local irohms_env_dir
-        irohms_env_dir=$(cat "$IROHMS_DIR"/user/envs/"$env")
-        local irohms_env_targets_dir=$irohms_env_dir/.env/targets
+        local cucr_env_dir
+        cucr_env_dir=$(cat "$CUCR_DIR"/user/envs/"$env")
+        local cucr_env_targets_dir=$cucr_env_dir/.env/targets
 
-        if [ -d "$irohms_env_targets_dir" ]
+        if [ -d "$cucr_env_targets_dir" ]
         then
             local targets_dir_moved
-            targets_dir_moved=$irohms_env_targets_dir.$(date +%F_%R)
-            mv -f "$irohms_env_targets_dir" "$targets_dir_moved"
+            targets_dir_moved=$cucr_env_targets_dir.$(date +%F_%R)
+            mv -f "$cucr_env_targets_dir" "$targets_dir_moved"
             echo "[cucr-env] Moved old targets of environment '$env' to $targets_dir_moved"
         fi
 
-        git clone --recursive "$url" "$irohms_env_targets_dir"
+        git clone --recursive "$url" "$cucr_env_targets_dir"
         echo "[cucr-env] cloned targets of environment '$env' from $url"
 
     elif [[ $cmd == "targets" ]]
     then
         local env=$1
-        [ -n "$env" ] || env=$IROHMS_ENV
+        [ -n "$env" ] || env=$CUCR_ENV
 
         if [ -n "$env" ]
         then
-            local irohms_env_dir
-            irohms_env_dir=$(cat "$IROHMS_DIR"/user/envs/"$env")
-            cd "$irohms_env_dir"/.env/targets || { echo -e "Targets directory '$irohms_env_dir/.env/targets' (environment '$IROHMS_ENV') does not exist"; return 1; }
+            local cucr_env_dir
+            cucr_env_dir=$(cat "$CUCR_DIR"/user/envs/"$env")
+            cd "$cucr_env_dir"/.env/targets || { echo -e "Targets directory '$cucr_env_dir/.env/targets' (environment '$CUCR_ENV') does not exist"; return 1; }
         fi
 
     elif [[ $cmd == "config" ]]
     then
         local env=$1
         shift
-        [ -n "$env" ] || env=$IROHMS_ENV
+        [ -n "$env" ] || env=$CUCR_ENV
 
-        "$IROHMS_DIR"/setup/cucr-env-config.bash "$env" "$@"
+        "$CUCR_DIR"/setup/cucr-env-config.bash "$env" "$@"
 
-        if [ "$env" == "$IROHMS_ENV" ]
+        if [ "$env" == "$CUCR_ENV" ]
         then
-            local irohms_env_dir
-            irohms_env_dir=$(cat "$IROHMS_DIR"/user/envs/"$env")
+            local cucr_env_dir
+            cucr_env_dir=$(cat "$CUCR_DIR"/user/envs/"$env")
             # shellcheck disable=SC1090
-            source "$irohms_env_dir"/.env/setup/user_setup.bash
+            source "$cucr_env_dir"/.env/setup/user_setup.bash
         fi
 
     elif [[ $cmd == "cd" ]]
     then
         local env=$1
-        [ -n "$env" ] || env=$IROHMS_ENV
+        [ -n "$env" ] || env=$CUCR_ENV
 
         if [ -n "$env" ]
         then
-            local irohms_env_dir
-            irohms_env_dir=$(cat "$IROHMS_DIR"/user/envs/"$env")
-            cd "$irohms_env_dir" || { echo -e "Environment directory '$irohms_env_dir' (environment '$IROHMS_ENV') does not exist"; return 1; }
+            local cucr_env_dir
+            cucr_env_dir=$(cat "$CUCR_DIR"/user/envs/"$env")
+            cd "$cucr_env_dir" || { echo -e "Environment directory '$cucr_env_dir' (environment '$CUCR_ENV') does not exist"; return 1; }
         else
             echo "[cucr-env](cd) no enviroment set or provided"
             return 1
@@ -244,18 +244,18 @@ Purged environment directory of '$env'"""
 
     elif [[ $cmd == "list" ]]
     then
-        [ -d "$IROHMS_DIR"/user/envs ] || return 0
+        [ -d "$CUCR_DIR"/user/envs ] || return 0
 
-        for env in "$IROHMS_DIR"/user/envs/*
+        for env in "$CUCR_DIR"/user/envs/*
         do
             basename "$env"
         done
 
     elif [[ $cmd == "list-current" ]]
     then
-        if [[ -n $IROHMS_ENV ]]
+        if [[ -n $CUCR_ENV ]]
         then
-            echo "$IROHMS_ENV"
+            echo "$CUCR_ENV"
         else
             echo "[cucr-env] no enviroment set"
         fi
@@ -268,7 +268,7 @@ Purged environment directory of '$env'"""
 
 # ----------------------------------------------------------------------------------------------------
 
-function _irohms-env
+function _cucr-env
 {
     local cur=${COMP_WORDS[COMP_CWORD]}
 
@@ -282,7 +282,7 @@ function _irohms-env
             if [ "$COMP_CWORD" -eq 2 ]
             then
                 local envs
-                [ -d "$IROHMS_DIR"/user/envs ] && envs=$(ls "$IROHMS_DIR"/user/envs)
+                [ -d "$CUCR_DIR"/user/envs ] && envs=$(ls "$CUCR_DIR"/user/envs)
 
                 mapfile -t COMPREPLY < <(compgen -W "$envs" -- "$cur")
 
@@ -296,17 +296,17 @@ function _irohms-env
             if [ "$COMP_CWORD" -eq 2 ]
             then
                 local envs
-                [ -d "$IROHMS_DIR/user/envs" ] && envs=$(ls "$IROHMS_DIR"/user/envs)
+                [ -d "$CUCR_DIR/user/envs" ] && envs=$(ls "$CUCR_DIR"/user/envs)
                 mapfile -t COMPREPLY < <(compgen -W "$envs" -- "$cur")
             fi
             if [ "$COMP_CWORD" -eq 3 ]
             then
                 local functions
-                functions=$(grep 'function ' "$IROHMS_DIR"/setup/cucr-env-config.bash | awk '{print $2}' | grep "cucr-env-")
+                functions=$(grep 'function ' "$CUCR_DIR"/setup/cucr-env-config.bash | awk '{print $2}' | grep "cucr-env-")
                 functions=${functions//cucr-env-/}
                 mapfile -t COMPREPLY < <(compgen -W "$functions" -- "$cur")
             fi
         fi
     fi
 }
-complete -F _irohms-env cucr-env
+complete -F _cucr-env cucr-env

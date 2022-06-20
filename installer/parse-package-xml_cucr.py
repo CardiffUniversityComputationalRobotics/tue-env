@@ -21,7 +21,7 @@ def main():
 
     dep_types = []
 
-    if os.getenv("IROHMS_INSTALL_SKIP_ROS_DEPS", "false") == "false":
+    if os.getenv("CUCR_INSTALL_SKIP_ROS_DEPS", "false") == "false":
         dep_types.extend(
             [
                 "build_depend",
@@ -34,10 +34,10 @@ def main():
             ]
         )
 
-    if os.getenv("IROHMS_INSTALL_TEST_DEPEND", "false") == "true":
+    if os.getenv("CUCR_INSTALL_TEST_DEPEND", "false") == "true":
         dep_types.append("test_depend")
 
-    if os.getenv("IROHMS_INSTALL_DOC_DEPEND", "false") == "true":
+    if os.getenv("CUCR_INSTALL_DOC_DEPEND", "false") == "true":
         dep_types.append("doc_depend")
 
     for dep_type in dep_types:
