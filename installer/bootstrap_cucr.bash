@@ -18,13 +18,13 @@ fi
 # Set ROS version
 case $DISTRIB_RELEASE in
     "16.04")
-        IROHMS_ROS_DISTRO=kinetic
+        CUCR_ROS_DISTRO=kinetic
         ;;
     "18.04")
-        IROHMS_ROS_DISTRO=melodic
+        CUCR_ROS_DISTRO=melodic
         ;;
     "20.04")
-        IROHMS_ROS_DISTRO=noetic
+        CUCR_ROS_DISTRO=noetic
         ;;
     *)
         echo "[cucr-env](bootstrap) Ubuntu $DISTRIB_RELEASE is unsupported. Use either 16.04 or 18.04"
@@ -80,33 +80,33 @@ fi
 # Source the installer commands
 # No need to follow to a file which is already checked by CI
 # shellcheck disable=SC1090
-source ~/.cucr/setup_irohms.bash
+source ~/.cucr/setup_cucr.bash
 
 # Create ros environment directory
-mkdir -p ~/ros/$IROHMS_ROS_DISTRO
+mkdir -p ~/ros/$CUCR_ROS_DISTRO
 
 # Initialize ros environment directory incl. targets
-cucr-env init ros-$IROHMS_ROS_DISTRO ~/ros/$IROHMS_ROS_DISTRO git@github.com:juandhv/tue-env-targets.git
+cucr-env init ros-$CUCR_ROS_DISTRO ~/ros/$CUCR_ROS_DISTRO git@github.com:juandhv/tue-env-targets.git
 
 # Set the correct ROS version for this environment
-echo "export IROHMS_ROS_DISTRO=$IROHMS_ROS_DISTRO" >> ~/ros/$IROHMS_ROS_DISTRO/.env/setup/user_setup.bash
+echo "export CUCR_ROS_DISTRO=$CUCR_ROS_DISTRO" >> ~/ros/$CUCR_ROS_DISTRO/.env/setup/user_setup.bash
 
-# Set IROHMS_GIT_USE_SSH to true
-echo "export IROHMS_GIT_USE_SSH=true" >> ~/ros/$IROHMS_ROS_DISTRO/.env/setup/user_setup.bash
+# Set CUCR_GIT_USE_SSH to true
+echo "export CUCR_GIT_USE_SSH=true" >> ~/ros/$CUCR_ROS_DISTRO/.env/setup/user_setup.bash
 
 # Add loading of TU/e tools (cucr-env, cucr-get, etc) to bashrc
 # shellcheck disable=SC2088
-if ! grep -q '~/.cucr/setup_irohms.bash' ~/.bashrc;
+if ! grep -q '~/.cucr/setup_cucr.bash' ~/.bashrc;
 then
     echo '
 # Load CUCR (from TU/e) tools
-source ~/.cucr/setup_irohms.bash' >> ~/.bashrc
+source ~/.cucr/setup_cucr.bash' >> ~/.bashrc
 fi
 
 # Set this environment as default
-cucr-env set-default ros-$IROHMS_ROS_DISTRO
+cucr-env set-default ros-$CUCR_ROS_DISTRO
 
 # Activate the default environment
 # No need to follow to file which is already checked by CI
 # shellcheck disable=SC1090
-source ~/.cucr/setup_irohms.bash
+source ~/.cucr/setup_cucr.bash

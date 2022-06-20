@@ -72,11 +72,11 @@ function _show_dep
         echo "$outstr"
     fi
 
-    [ ! -f "$IROHMS_ENV_DIR"/.env/dependencies/"$1" ] && echo -e "\033[38;5;1mNo dependency file exists of $1\033[0m" && return 1
+    [ ! -f "$CUCR_ENV_DIR"/.env/dependencies/"$1" ] && echo -e "\033[38;5;1mNo dependency file exists of $1\033[0m" && return 1
     while read -r t
     do
         _show_dep "$t" "$2" "$((indent + 1))" "$tmp" || return 1
-    done < "$IROHMS_ENV_DIR"/.env/dependencies/"$1"
+    done < "$CUCR_ENV_DIR"/.env/dependencies/"$1"
 }
 
 # idiomatic parameter and option handling in sh
@@ -123,7 +123,7 @@ done
 set -- $targets
 if [[ -z "$targets" || "$ALL" = "true" ]]
 then
-    for t in "$IROHMS_ENV_DIR"/.env/dependencies/*
+    for t in "$CUCR_ENV_DIR"/.env/dependencies/*
     do
         _show_dep "$(basename "$t")" "$2"
     done

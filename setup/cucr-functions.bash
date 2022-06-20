@@ -1,10 +1,10 @@
 #! /usr/bin/env bash
 
 # shellcheck disable=SC2153
-IROHMS_DEV_DIR=$IROHMS_ENV_DIR/dev
-IROHMS_SYSTEM_DIR=$IROHMS_ENV_DIR/system
-export IROHMS_DEV_DIR
-export IROHMS_SYSTEM_DIR
+CUCR_DEV_DIR=$CUCR_ENV_DIR/dev
+CUCR_SYSTEM_DIR=$CUCR_ENV_DIR/system
+export CUCR_DEV_DIR
+export CUCR_SYSTEM_DIR
 
 # ----------------------------------------------------------------------------------------------------
 #                                        HELPER FUNCTIONS
@@ -64,7 +64,7 @@ function cucr-apt-select-mirror
 #                                       GIT LOCAL HOUSEKEEPING
 # ----------------------------------------------------------------------------------------------------
 
-function _irohms-git-get-default-branch
+function _cucr-git-get-default-branch
 {
     # Takes current dir in case $1 is empty
     local default_branch
@@ -73,19 +73,19 @@ function _irohms-git-get-default-branch
     echo "$default_branch"
 }
 
-function __irohms-git-checkout-default-branch
+function __cucr-git-checkout-default-branch
 {
     local default_branch
-    default_branch=$(_irohms-git-get-default-branch)
+    default_branch=$(_cucr-git-get-default-branch)
     _git_remote_checkout origin "$default_branch"
 }
 
-function _irohms-git-checkout-default-branch
+function _cucr-git-checkout-default-branch
 {
-    _irohms-repos-do "__irohms-git-checkout-default-branch"
+    _cucr-repos-do "__cucr-git-checkout-default-branch"
 }
 
-function _irohms-git-clean-local
+function _cucr-git-clean-local
 {
     # Function to remove stale branches from a git repository (which should
     # either be the PWD or one of its parent directories). The function removes
@@ -124,7 +124,7 @@ function _irohms-git-clean-local
     # branch before cleanup
     if [[ "$stale_branches" == *$(git rev-parse --abbrev-ref HEAD)* ]]
     then
-        __irohms-git-checkout-default-branch
+        __cucr-git-checkout-default-branch
 
         git pull --ff-only --prune > /dev/null 2>&1
         error_code=$?
@@ -210,7 +210,7 @@ function _irohms-git-clean-local
 
 function cucr-git-clean-local
 {
-    # Run _irohms-git-clean-local on cucr-env, cucr-env-targets and all current environment
+    # Run _cucr-git-clean-local on cucr-env, cucr-env-targets and all current environment
     # repositories safely when no input exists
 
     if [ -n "$1" ]
@@ -222,18 +222,18 @@ function cucr-git-clean-local
         fi
     fi
 
-    _irohms-repos-do "_irohms-git-clean-local $*"
+    _cucr-repos-do "_cucr-git-clean-local $*"
 }
 
-function __irohms-git-clean-local
+function __cucr-git-clean-local
 {
     local IFS=$'\n'
     options="'--force-remove'"
     # shellcheck disable=SC2178
     mapfile -t COMPREPLY < <(compgen -W "$(echo -e "$options")" -- "$cur")
 }
-complete -F __irohms-git-clean-local cucr-git-clean-local
-complete -F __irohms-git-clean-local _irohms-git-clean-local
+complete -F __cucr-git-clean-local cucr-git-clean-local
+complete -F __cucr-git-clean-local _cucr-git-clean-local
 
 # ----------------------------------------------------------------------------------------------------
 #                                              SSH
@@ -295,18 +295,18 @@ function _git_ssh
 }
 export -f _git_ssh # otherwise not available in sourced files
 
-function _irohms_git_https_or_ssh
+function _cucr_git_https_or_ssh
 {
     local input_url=$1
     local output_url
 
-    # TODO: Remove the use of IROHMS_USE_SSH when migration to IROHMS_GIT_USE_SSH is complete
-    [[ -v "IROHMS_USE_SSH" ]] && test_var="IROHMS_USE_SSH"
+    # TODO: Remove the use of CUCR_USE_SSH when migration to CUCR_GIT_USE_SSH is complete
+    [[ -v "CUCR_USE_SSH" ]] && test_var="CUCR_USE_SSH"
 
-    [[ -v "IROHMS_GIT_USE_SSH" ]] && test_var="IROHMS_GIT_USE_SSH"
+    [[ -v "CUCR_GIT_USE_SSH" ]] && test_var="CUCR_GIT_USE_SSH"
 
-    [[ "$input_url" == *"github"* ]] && [[ -v "IROHMS_GITHUB_USE_SSH" ]] && test_var="IROHMS_GITHUB_USE_SSH"
-    [[ "$input_url" == *"gitlab"* ]] && [[ -v "IROHMS_GITLAB_USE_SSH" ]] && test_var="IROHMS_GITLAB_USE_SSH"
+    [[ "$input_url" == *"github"* ]] && [[ -v "CUCR_GITHUB_USE_SSH" ]] && test_var="CUCR_GITHUB_USE_SSH"
+    [[ "$input_url" == *"gitlab"* ]] && [[ -v "CUCR_GITLAB_USE_SSH" ]] && test_var="CUCR_GITLAB_USE_SSH"
 
     if [[ "${!test_var}" == "true" ]]
     then
@@ -317,7 +317,7 @@ function _irohms_git_https_or_ssh
 
     echo "$output_url"
 }
-export -f _irohms_git_https_or_ssh # otherwise not available in sourced files
+export -f _cucr_git_https_or_ssh # otherwise not available in sourced files
 
 # ----------------------------------------------------------------------------------------------------
 #                                            CUCR-MAKE
@@ -325,21 +325,21 @@ export -f _irohms_git_https_or_ssh # otherwise not available in sourced files
 
 function cucr-make
 {
-    if [ -n "$IROHMS_ROS_DISTRO" ] && [ -d "$IROHMS_SYSTEM_DIR" ]
+    if [ -n "$CUCR_ROS_DISTRO" ] && [ -d "$CUCR_SYSTEM_DIR" ]
     then
         local build_tool=""
-        if [ -f "$IROHMS_SYSTEM_DIR"/devel/.built_by ]
+        if [ -f "$CUCR_SYSTEM_DIR"/devel/.built_by ]
         then
-            build_tool=$(cat "$IROHMS_SYSTEM_DIR"/devel/.built_by)
+            build_tool=$(cat "$CUCR_SYSTEM_DIR"/devel/.built_by)
         fi
         case $build_tool in
         'catkin build')
-            catkin build --workspace "$IROHMS_SYSTEM_DIR" "$@"
+            catkin build --workspace "$CUCR_SYSTEM_DIR" "$@"
             ;;
         '')
-            catkin config --init --mkdirs --workspace "$IROHMS_SYSTEM_DIR" --extend /opt/ros/"$IROHMS_ROS_DISTRO" -DCMAKE_BUILD_TYPE=RelWithDebInfo
-            catkin build --workspace "$IROHMS_SYSTEM_DIR" "$@"
-            touch "$IROHMS_SYSTEM_DIR"/devel/.catkin # hack to allow overlaying to this ws while being empty
+            catkin config --init --mkdirs --workspace "$CUCR_SYSTEM_DIR" --extend /opt/ros/"$CUCR_ROS_DISTRO" -DCMAKE_BUILD_TYPE=RelWithDebInfo
+            catkin build --workspace "$CUCR_SYSTEM_DIR" "$@"
+            touch "$CUCR_SYSTEM_DIR"/devel/.catkin # hack to allow overlaying to this ws while being empty
             ;;
         *)
             echo -e "\e$build_tool is not supported (anymore), use catkin tools\e[0m"
@@ -350,32 +350,32 @@ function cucr-make
 }
 export -f cucr-make
 
-function _irohms-make
+function _cucr-make
 {
     local cur=${COMP_WORDS[COMP_CWORD]}
 
-    mapfile -t COMPREPLY < <(compgen -W "$(_list_subdirs "$IROHMS_SYSTEM_DIR"/src)" -- "$cur")
+    mapfile -t COMPREPLY < <(compgen -W "$(_list_subdirs "$CUCR_SYSTEM_DIR"/src)" -- "$cur")
 }
 
-complete -F _irohms-make cucr-make
+complete -F _cucr-make cucr-make
 
 function cucr-make-dev
 {
-    if [ -n "$IROHMS_ROS_DISTRO" ] && [ -d "$IROHMS_DEV_DIR" ]
+    if [ -n "$CUCR_ROS_DISTRO" ] && [ -d "$CUCR_DEV_DIR" ]
     then
         local build_tool=""
-        if [ -f "$IROHMS_DEV_DIR"/devel/.built_by ]
+        if [ -f "$CUCR_DEV_DIR"/devel/.built_by ]
         then
-            build_tool=$(cat "$IROHMS_DEV_DIR"/devel/.built_by)
+            build_tool=$(cat "$CUCR_DEV_DIR"/devel/.built_by)
         fi
         case $build_tool in
         'catkin build')
-            catkin build --workspace "$IROHMS_DEV_DIR" "$@"
+            catkin build --workspace "$CUCR_DEV_DIR" "$@"
             ;;
         '')
-            catkin config --init --mkdirs --workspace "$IROHMS_DEV_DIR" --extend "$IROHMS_SYSTEM_DIR"/devel -DCMAKE_BUILD_TYPE=RelWithDebInfo
-            catkin build --workspace "$IROHMS_DEV_DIR" "$@"
-            touch "$IROHMS_DEV_DIR"/devel/.catkin # hack to allow overlaying to this ws while being empty
+            catkin config --init --mkdirs --workspace "$CUCR_DEV_DIR" --extend "$CUCR_SYSTEM_DIR"/devel -DCMAKE_BUILD_TYPE=RelWithDebInfo
+            catkin build --workspace "$CUCR_DEV_DIR" "$@"
+            touch "$CUCR_DEV_DIR"/devel/.catkin # hack to allow overlaying to this ws while being empty
             ;;
         *)
             echo -e "\e$build_tool is not supported (anymore), use catkin tools\e[0m"
@@ -386,13 +386,13 @@ function cucr-make-dev
 }
 export -f cucr-make-dev
 
-function _irohms-make-dev
+function _cucr-make-dev
 {
     local cur=${COMP_WORDS[COMP_CWORD]}
 
-    mapfile -t COMPREPLY < <(compgen -W "$(_list_subdirs "$IROHMS_DEV_DIR"/src)" -- "$cur")
+    mapfile -t COMPREPLY < <(compgen -W "$(_list_subdirs "$CUCR_DEV_DIR"/src)" -- "$cur")
 }
-complete -F _irohms-make-dev cucr-make-dev
+complete -F _cucr-make-dev cucr-make-dev
 
 # ----------------------------------------------------------------------------------------------------
 #                                              CUCR-DEV
@@ -402,20 +402,20 @@ function cucr-dev
 {
     if [ -z "$1" ]
     then
-        _list_subdirs "$IROHMS_DEV_DIR"/src
+        _list_subdirs "$CUCR_DEV_DIR"/src
         return 0
     fi
 
     for pkg in "$@"
     do
-        if [ ! -d "$IROHMS_SYSTEM_DIR"/src/"$pkg" ]
+        if [ ! -d "$CUCR_SYSTEM_DIR"/src/"$pkg" ]
         then
             echo "[cucr-dev] '$pkg' does not exist in the system workspace."
-        elif [ -d "$IROHMS_DEV_DIR"/src/"$pkg" ]
+        elif [ -d "$CUCR_DEV_DIR"/src/"$pkg" ]
         then
             echo "[cucr-dev] '$pkg' is already in the dev workspace."
         else
-            ln -s "$IROHMS_SYSTEM_DIR"/src/"$pkg" "$IROHMS_DEV_DIR"/src/"$pkg"
+            ln -s "$CUCR_SYSTEM_DIR"/src/"$pkg" "$CUCR_DEV_DIR"/src/"$pkg"
         fi
     done
 
@@ -425,30 +425,30 @@ function cucr-dev
 
 function cucr-dev-clean
 {
-    for f in $(_list_subdirs "$IROHMS_DEV_DIR"/src)
+    for f in $(_list_subdirs "$CUCR_DEV_DIR"/src)
     do
         # Test if f is a symbolic link
-        if [[ -L $IROHMS_DEV_DIR/src/$f ]]
+        if [[ -L $CUCR_DEV_DIR/src/$f ]]
         then
             echo "Cleaned '$f'"
-            rm "$IROHMS_DEV_DIR"/src/"$f"
+            rm "$CUCR_DEV_DIR"/src/"$f"
         fi
     done
 
-    rm -rf "$IROHMS_DEV_DIR"/devel/share
-    rm -rf "$IROHMS_DEV_DIR"/devel/etc
-    rm -rf "$IROHMS_DEV_DIR"/devel/include
-    rm -rf "$IROHMS_DEV_DIR"/devel/lib
-    rm -rf "$IROHMS_DEV_DIR"/build
+    rm -rf "$CUCR_DEV_DIR"/devel/share
+    rm -rf "$CUCR_DEV_DIR"/devel/etc
+    rm -rf "$CUCR_DEV_DIR"/devel/include
+    rm -rf "$CUCR_DEV_DIR"/devel/lib
+    rm -rf "$CUCR_DEV_DIR"/build
 }
 
-function _irohms-dev
+function _cucr-dev
 {
     local cur=${COMP_WORDS[COMP_CWORD]}
 
-    mapfile -t COMPREPLY < <(compgen -W "$(_list_subdirs "$IROHMS_SYSTEM_DIR"/src)" -- "$cur")
+    mapfile -t COMPREPLY < <(compgen -W "$(_list_subdirs "$CUCR_SYSTEM_DIR"/src)" -- "$cur")
 }
-complete -F _irohms-dev cucr-dev
+complete -F _cucr-dev cucr-dev
 
 # ----------------------------------------------------------------------------------------------------
 #                                             CUCR-STATUS
@@ -458,18 +458,18 @@ function _robocup_branch_allowed
 {
     local branch=$1
     local robocup_branch
-    robocup_branch=$(_irohms_get_robocup_branch)
+    robocup_branch=$(_cucr_get_robocup_branch)
     [ -n "$robocup_branch" ] && [ "$branch" == "$robocup_branch" ] && return 0
     # else
     return 1
 }
 
-function _irohms_get_robocup_branch
+function _cucr_get_robocup_branch
 {
-    [ -f "$IROHMS_DIR"/user/config/robocup ] && cat "$IROHMS_DIR"/user/config/robocup
+    [ -f "$CUCR_DIR"/user/config/robocup ] && cat "$CUCR_DIR"/user/config/robocup
 }
 
-function _irohms-repo-status
+function _cucr-repo-status
 {
     local name=$1
     local pkg_dir=$2
@@ -504,18 +504,18 @@ function _irohms-repo-status
 
             # Add branch specified by target
             local target_branch version_cache_file
-            version_cache_file="$IROHMS_ENV_DIR/.env/version_cache/$(git -C "$pkg_dir" rev-parse --show-toplevel 2>/dev/null)"
+            version_cache_file="$CUCR_ENV_DIR/.env/version_cache/$(git -C "$pkg_dir" rev-parse --show-toplevel 2>/dev/null)"
             [ -f "$version_cache_file" ] && target_branch=$(cat "$version_cache_file")
             [ -n "$target_branch" ] && test_branches="${test_branches:+${test_branches} }$target_branch"
 
             # Add default branch
             local default_branch
-            default_branch=$(_irohms-git-get-default-branch "$pkg_dir")
+            default_branch=$(_cucr-git-get-default-branch "$pkg_dir")
             [ -n "$default_branch" ] && test_branches="${test_branches:+${test_branches} }$default_branch"
 
             # Add robocup branch
             local robocup_branch
-            robocup_branch=$(_irohms_get_robocup_branch)
+            robocup_branch=$(_cucr_get_robocup_branch)
             [ -n "$robocup_branch" ] && test_branches="${test_branches:+${test_branches} }$robocup_branch"
 
             local allowed="false"
@@ -559,7 +559,7 @@ function _irohms-repo-status
 
 # ----------------------------------------------------------------------------------------------------
 
-function _irohms-dir-status
+function _cucr-dir-status
 {
     [ -d "$1" ] || return 1
 
@@ -568,7 +568,7 @@ function _irohms-dir-status
     for f in $fs
     do
         pkg_dir=$1/$f
-        _irohms-repo-status "$f" "$pkg_dir"
+        _cucr-repo-status "$f" "$pkg_dir"
     done
 }
 
@@ -576,16 +576,16 @@ function _irohms-dir-status
 
 function cucr-status
 {
-    _irohms-dir-status "$IROHMS_SYSTEM_DIR"/src
-    _irohms-repo-status "cucr-env" "$IROHMS_DIR"
-    _irohms-repo-status "cucr-env-targets" "$IROHMS_ENV_TARGETS_DIR"
+    _cucr-dir-status "$CUCR_SYSTEM_DIR"/src
+    _cucr-repo-status "cucr-env" "$CUCR_DIR"
+    _cucr-repo-status "cucr-env-targets" "$CUCR_ENV_TARGETS_DIR"
 }
 
 # ----------------------------------------------------------------------------------------------------
 
 function cucr-git-status
 {
-    for pkg_dir in "$IROHMS_SYSTEM_DIR"/src/*/
+    for pkg_dir in "$CUCR_SYSTEM_DIR"/src/*/
     do
         pkg=$(basename "$pkg_dir")
 
@@ -605,7 +605,7 @@ function cucr-revert
 {
     human_time="$*"
 
-    for pkg_dir in "$IROHMS_SYSTEM_DIR"/src/*/
+    for pkg_dir in "$CUCR_SYSTEM_DIR"/src/*/
     do
         pkg=$(basename "$pkg_dir")
 
@@ -638,7 +638,7 @@ function cucr-revert
 
 function cucr-revert-undo
 {
-    for pkg_dir in "$IROHMS_SYSTEM_DIR"/src/*/
+    for pkg_dir in "$CUCR_SYSTEM_DIR"/src/*/
     do
         pkg=$(basename "$pkg_dir")
 
@@ -656,7 +656,7 @@ function cucr-revert-undo
 #                                              CUCR-GET
 # ----------------------------------------------------------------------------------------------------
 
-function _irohms_show_file
+function _cucr_show_file
 {
     if [ -n "$2" ]
     then
@@ -664,88 +664,88 @@ function _irohms_show_file
         echo "--------------------------------------------------"
         if hash pygmentize 2> /dev/null
         then
-            pygmentize -g "$IROHMS_ENV_TARGETS_DIR"/"$1"/"$2"
+            pygmentize -g "$CUCR_ENV_TARGETS_DIR"/"$1"/"$2"
         else
-            cat "$IROHMS_ENV_TARGETS_DIR"/"$1"/"$2"
+            cat "$CUCR_ENV_TARGETS_DIR"/"$1"/"$2"
         fi
         echo "--------------------------------------------------"
     else
-        echo -e "_irohms_show_file requires target_name and relative file_path in target"
+        echo -e "_cucr_show_file requires target_name and relative file_path in target"
         return 1
     fi
 }
 
-function __irohms_irohms_generate_setup_file
+function __cucr_cucr_generate_setup_file
 {
     # Check whether this target was already added to the setup
-    if [[ "$IROHMS_SETUP_TARGETS" == *" $1 "* ]];
+    if [[ "$CUCR_SETUP_TARGETS" == *" $1 "* ]];
     then
         return 0
     fi
 
-    IROHMS_SETUP_TARGETS=" $1$IROHMS_SETUP_TARGETS"
+    CUCR_SETUP_TARGETS=" $1$CUCR_SETUP_TARGETS"
 
     # Check if the dependency file exists. If not, return
-    if [ ! -f "$irohms_dependencies_dir"/"$1" ]
+    if [ ! -f "$cucr_dependencies_dir"/"$1" ]
     then
         return 0
     fi
 
     # Recursively add a setup for each dependency
-    deps=$(cat "$irohms_dependencies_dir"/"$1")
+    deps=$(cat "$cucr_dependencies_dir"/"$1")
     for dep in $deps
     do
         # You shouldn't depend on yourself
         if [ "$1" != "$dep" ]
         then
-            __irohms_irohms_generate_setup_file "$dep"
+            __cucr_cucr_generate_setup_file "$dep"
         fi
     done
 
-    local irohms_setup_file=$IROHMS_ENV_TARGETS_DIR/$1/setup
-    if [ -f "$irohms_setup_file" ]
+    local cucr_setup_file=$CUCR_ENV_TARGETS_DIR/$1/setup
+    if [ -f "$cucr_setup_file" ]
     then
-        echo "source $irohms_setup_file" >> "$IROHMS_ENV_DIR"/.env/setup/target_setup.bash
+        echo "source $cucr_setup_file" >> "$CUCR_ENV_DIR"/.env/setup/target_setup.bash
     fi
 }
 
-function _irohms_generate_setup_file
+function _cucr_generate_setup_file
 {
-    mkdir -p "$IROHMS_ENV_DIR"/.env/setup
-    echo "# This file was auto-generated by cucr-get. Do not change this file." > "$IROHMS_ENV_DIR"/.env/setup/target_setup.bash
+    mkdir -p "$CUCR_ENV_DIR"/.env/setup
+    echo "# This file was auto-generated by cucr-get. Do not change this file." > "$CUCR_ENV_DIR"/.env/setup/target_setup.bash
 
-    local irohms_dependencies_dir="$IROHMS_ENV_DIR"/.env/dependencies
+    local cucr_dependencies_dir="$CUCR_ENV_DIR"/.env/dependencies
 
-    if [ -d "$irohms_dependencies_dir" ]
+    if [ -d "$cucr_dependencies_dir" ]
     then
         local installed_targets
-        installed_targets=$(ls "$IROHMS_ENV_DIR"/.env/installed)
-        local IROHMS_SETUP_TARGETS=" "
+        installed_targets=$(ls "$CUCR_ENV_DIR"/.env/installed)
+        local CUCR_SETUP_TARGETS=" "
         for t in $installed_targets
         do
-            __irohms_irohms_generate_setup_file "$t"
+            __cucr_cucr_generate_setup_file "$t"
         done
     fi
 }
 
-function _irohms_remove_recursively
+function _cucr_remove_recursively
 {
     if [ -z "$1" ] || [ -n "$2" ]
     then
-        echo "_irohms_remove_recursively requires and accepts one target"
+        echo "_cucr_remove_recursively requires and accepts one target"
         echo "provided arguments: $*"
         return 1
     fi
 
     local target=$1
-    local irohms_dependencies_dir="$IROHMS_ENV_DIR"/.env/dependencies
-    local irohms_dependencies_on_dir="$IROHMS_ENV_DIR"/.env/dependencies-on
+    local cucr_dependencies_dir="$CUCR_ENV_DIR"/.env/dependencies
+    local cucr_dependencies_on_dir="$CUCR_ENV_DIR"/.env/dependencies-on
     local error_code=0
 
     # If packages depend on the target to be removed, just remove the installed status.
-    if [ -f "$irohms_dependencies_on_dir"/"$target" ]
+    if [ -f "$cucr_dependencies_on_dir"/"$target" ]
     then
-        if [[ -n $(cat "$irohms_dependencies_on_dir"/"$target") ]]
+        if [[ -n $(cat "$cucr_dependencies_on_dir"/"$target") ]]
         then
             # depend-on is not empty, so removing the installed status
             echo "[cucr-get] Other targets still depend on $target, so ignoring it"
@@ -753,18 +753,18 @@ function _irohms_remove_recursively
         else
             # depend-on is empty, so remove it and continue to actual removing of the target
             echo "[cucr-get] Deleting empty depend-on file of: $target"
-            rm -f "$irohms_dependencies_on_dir"/"$target"
+            rm -f "$cucr_dependencies_on_dir"/"$target"
         fi
     fi
 
     # If no packages depend on this target, remove it and its dependcies.
-    if [ -f "$irohms_dependencies_dir"/"$target" ]
+    if [ -f "$cucr_dependencies_dir"/"$target" ]
     then
         # Iterate over all depencies of target, which is removed.
         while read -r dep
         do
             # Target is removed, so remove yourself from depend-on files of deps
-            local dep_dep_on_file="$irohms_dependencies_on_dir"/"$dep"
+            local dep_dep_on_file="$cucr_dependencies_on_dir"/"$dep"
             local tmp_file=/tmp/temp_depend_on
             if [ -f "$dep_dep_on_file" ]
             then
@@ -781,15 +781,15 @@ function _irohms_remove_recursively
 
             # Actually remove the deps
             local dep_error
-            _irohms_remove_recursively "$dep"
+            _cucr_remove_recursively "$dep"
             dep_error=$?
             if [ $dep_error -gt 0 ]
             then
                 error_code=1
             fi
 
-        done < "$irohms_dependencies_dir"/"$target"
-        rm -f "$irohms_dependencies_dir"/"$target"
+        done < "$cucr_dependencies_dir"/"$target"
+        rm -f "$cucr_dependencies_dir"/"$target"
     else
         echo "[cucr-get] No depencies file exist for target: $target"
     fi
@@ -829,8 +829,8 @@ function cucr-get
         return 1
     fi
 
-    local irohms_dep_dir=$IROHMS_ENV_DIR/.env/dependencies
-    local irohms_installed_dir=$IROHMS_ENV_DIR/.env/installed
+    local cucr_dep_dir=$CUCR_ENV_DIR/.env/dependencies
+    local cucr_installed_dir=$CUCR_ENV_DIR/.env/installed
 
     local error_code=0
 
@@ -859,7 +859,7 @@ function cucr-get
                 #Skip options
                 [[ $target = '--'* ]] && continue
 
-                if [ -z "$(find "$IROHMS_ENV_DIR"/.env/dependencies -maxdepth 1 -name "$target" -type f -printf "%P ")" ]
+                if [ -z "$(find "$CUCR_ENV_DIR"/.env/dependencies -maxdepth 1 -name "$target" -type f -printf "%P ")" ]
                 then
                     echo "[cucr-get] Package '$target' is not installed."
                     error_code=1
@@ -869,13 +869,13 @@ function cucr-get
 
         if [ $error_code -eq 0 ]
         then
-            "$IROHMS_DIR"/installer/cucr-install.bash "$cmd" "$@"
+            "$CUCR_DIR"/installer/cucr-install.bash "$cmd" "$@"
             error_code=$?
             if [ $error_code -eq 0 ]
             then
-                _irohms_generate_setup_file
+                _cucr_generate_setup_file
                 # shellcheck disable=SC1090
-                source "$IROHMS_DIR"/setup.bash
+                source "$CUCR_DIR"/setup.bash
             fi
         fi
 
@@ -886,7 +886,7 @@ function cucr-get
         for target in "$@"
         do
             local resolved_targets
-            resolved_targets="$(find "$irohms_installed_dir" -maxdepth 1 -name "$target" -type f -printf "%P ")"
+            resolved_targets="$(find "$cucr_installed_dir" -maxdepth 1 -name "$target" -type f -printf "%P ")"
             if [ -z "$resolved_targets" ]
             then
                 echo "[cucr-get] Package '$target' is not installed."
@@ -903,25 +903,25 @@ function cucr-get
             return $error_code;
         fi
 
-        if [ -f /tmp/irohms_get_remove_lock ]
+        if [ -f /tmp/cucr_get_remove_lock ]
         then
             echo "[cucr-get] Can't execute 'remove' as an other run is still busy"
-            echo "[cucr-get] If this keeps happening, excute: rm /tmp/irohms_get_remove_lock"
+            echo "[cucr-get] If this keeps happening, excute: rm /tmp/cucr_get_remove_lock"
             return 1
         fi
 
-        touch /tmp/irohms_get_remove_lock
+        touch /tmp/cucr_get_remove_lock
         for target in $targets_to_remove
         do
             local target_error=0
-            _irohms_remove_recursively "$target"
+            _cucr_remove_recursively "$target"
             target_error=$?
             if [ $target_error -gt 0 ]
             then
                 error_code=1
                 echo "[cucr-get] Problems during uninstalling $target"
             else
-                rm "$irohms_installed_dir"/"$target"
+                rm "$cucr_installed_dir"/"$target"
                 echo "[cucr-get] Succesfully uninstalled: $target"
             fi
         done
@@ -929,10 +929,10 @@ function cucr-get
         if [ $error_code -eq 0 ]
         then
             echo "[cucr-get] Re-generating the target setup file"
-            _irohms_generate_setup_file
+            _cucr_generate_setup_file
         fi
 
-        rm /tmp/irohms_get_remove_lock
+        rm /tmp/cucr_get_remove_lock
 
         echo ""
         if [ -n "$2" ]
@@ -945,9 +945,9 @@ function cucr-get
     then
         if [[ "$1" == "-a" ]]
         then
-            ls "$irohms_dep_dir"
+            ls "$cucr_dep_dir"
         else
-            ls "$IROHMS_ENV_DIR"/.env/installed
+            ls "$CUCR_ENV_DIR"/.env/installed
         fi
     elif [[ $cmd == "show" ]]
     then
@@ -963,7 +963,7 @@ function cucr-get
             then
                 echo ""
             fi
-            if [ ! -d "$IROHMS_ENV_TARGETS_DIR"/"$target" ]
+            if [ ! -d "$CUCR_ENV_TARGETS_DIR"/"$target" ]
             then
                 echo "[cucr-get](show) '$target' is not a valid target"
                 firsttarget=false
@@ -972,7 +972,7 @@ function cucr-get
 
             local firstfile="true"
             local files
-            mapfile -t files < <(find "$IROHMS_ENV_TARGETS_DIR"/"$target" -type f)
+            mapfile -t files < <(find "$CUCR_ENV_TARGETS_DIR"/"$target" -type f)
 
             # First show the common target files
             local main_target_files="install.yaml install.bash setup"
@@ -980,13 +980,13 @@ function cucr-get
             do
                 for key in "${!files[@]}"
                 do
-                    if [ "${files[$key]}" == "$IROHMS_ENV_TARGETS_DIR"/"$target"/"$file" ]
+                    if [ "${files[$key]}" == "$CUCR_ENV_TARGETS_DIR"/"$target"/"$file" ]
                     then
                         if [[ $firstfile == false ]]
                         then
                             echo ""
                         fi
-                        _irohms_show_file "$target" "$file"
+                        _cucr_show_file "$target" "$file"
                         firstfile=false
                         unset "files[$key]"
                         files=("${files[@]}")
@@ -1002,7 +1002,7 @@ function cucr-get
                 then
                     echo ""
                 fi
-                _irohms_show_file "$target" "${file#*$IROHMS_ENV_TARGETS_DIR"/"$target/}"
+                _cucr_show_file "$target" "${file#*$CUCR_ENV_TARGETS_DIR"/"$target/}"
                 firstfile=false
             done
             firsttarget=false
@@ -1010,14 +1010,14 @@ function cucr-get
 
     elif [[ $cmd == "dep" ]]
     then
-        "$IROHMS_DIR"/installer/cucr-get-dep.bash "$@"
+        "$CUCR_DIR"/installer/cucr-get-dep.bash "$@"
     else
         echo "[cucr-get] Unknown command: '$cmd'"
         return 1
     fi
 }
 
-function _irohms-get
+function _cucr-get
 {
     local cur=${COMP_WORDS[COMP_CWORD]}
 
@@ -1033,34 +1033,34 @@ function _irohms-get
         then
             local IFS=$'\n'
             # shellcheck disable=SC2178
-            mapfile -t COMPREPLY < <(compgen -W "$(echo -e "$(find "$IROHMS_ENV_TARGETS_DIR" -mindepth 1 -maxdepth 1 -type d -not -name ".*" -printf "%f\n" | sed "s/.*/'& '/g")\n'--debug '\n'--no-ros-deps '\n'--doc-depend '\n'--no-doc-depend '\n'--test-depend '\n'--no-test-depend '\n'--branch='")" -- "$cur")
+            mapfile -t COMPREPLY < <(compgen -W "$(echo -e "$(find "$CUCR_ENV_TARGETS_DIR" -mindepth 1 -maxdepth 1 -type d -not -name ".*" -printf "%f\n" | sed "s/.*/'& '/g")\n'--debug '\n'--no-ros-deps '\n'--doc-depend '\n'--no-doc-depend '\n'--test-depend '\n'--no-test-depend '\n'--branch='")" -- "$cur")
         elif [[ $cmd == "dep" ]]
         then
             local IFS=$'\n'
             # shellcheck disable=SC2178
-            mapfile -t COMPREPLY < <(compgen -W "$(echo -e "$(find "$IROHMS_ENV_DIR"/.env/dependencies -mindepth 1 -maxdepth 1 -type f -not -name ".*" -printf "%f\n" | sed "s/.*/'& '/g")\n'--plain '\n'--verbose '\n'--ros-only '\n'--all '\n'--level='")" -- "$cur")
+            mapfile -t COMPREPLY < <(compgen -W "$(echo -e "$(find "$CUCR_ENV_DIR"/.env/dependencies -mindepth 1 -maxdepth 1 -type f -not -name ".*" -printf "%f\n" | sed "s/.*/'& '/g")\n'--plain '\n'--verbose '\n'--ros-only '\n'--all '\n'--level='")" -- "$cur")
         elif [[ $cmd == "update" ]]
         then
             local IFS=$'\n'
             # shellcheck disable=SC2178
-            mapfile -t COMPREPLY < <(compgen -W "$(echo -e "$(find "$IROHMS_ENV_DIR"/.env/dependencies -mindepth 1 -maxdepth 1 -type f -not -name ".*" -printf "%f\n" | sed "s/.*/'& '/g")\n'--debug '\n'--no-ros-deps '\n'--doc-depend '\n'--no-doc-depend '\n'--test-depend '\n'--no-test-depend '\n'--branch='")" -- "$cur")
+            mapfile -t COMPREPLY < <(compgen -W "$(echo -e "$(find "$CUCR_ENV_DIR"/.env/dependencies -mindepth 1 -maxdepth 1 -type f -not -name ".*" -printf "%f\n" | sed "s/.*/'& '/g")\n'--debug '\n'--no-ros-deps '\n'--doc-depend '\n'--no-doc-depend '\n'--test-depend '\n'--no-test-depend '\n'--branch='")" -- "$cur")
         elif [[ $cmd == "remove" ]]
         then
             local IFS=$'\n'
             # shellcheck disable=SC2178
-            mapfile -t COMPREPLY < <(compgen -W "$(find "$IROHMS_ENV_DIR"/.env/installed -mindepth 1 -maxdepth 1 -type f -not -name ".*" -printf "%f\n" | sed "s/.*/'& '/g")" -- "$cur")
+            mapfile -t COMPREPLY < <(compgen -W "$(find "$CUCR_ENV_DIR"/.env/installed -mindepth 1 -maxdepth 1 -type f -not -name ".*" -printf "%f\n" | sed "s/.*/'& '/g")" -- "$cur")
         elif [[ $cmd == "show" ]]
         then
             local IFS=$'\n'
             # shellcheck disable=SC2178
-            mapfile -t COMPREPLY < <(compgen -W "$(find "$IROHMS_ENV_TARGETS_DIR" -mindepth 1 -maxdepth 1 -type d -not -name ".*" -printf "%f\n" | sed "s/.*/'& '/g")" -- "$cur")
+            mapfile -t COMPREPLY < <(compgen -W "$(find "$CUCR_ENV_TARGETS_DIR" -mindepth 1 -maxdepth 1 -type d -not -name ".*" -printf "%f\n" | sed "s/.*/'& '/g")" -- "$cur")
         else
             # shellcheck disable=SC2178
             COMPREPLY=""
         fi
     fi
 }
-complete -o nospace -F _irohms-get cucr-get
+complete -o nospace -F _cucr-get cucr-get
 
 # ----------------------------------------------------------------------------------------------------
 #                                             CUCR-CHECKOUT
@@ -1085,7 +1085,7 @@ function cucr-checkout
     while test $# -gt 0
     do
         case "$1" in
-            --only-pkgs) local NO_IROHMS_ENV="true"
+            --only-pkgs) local NO_CUCR_ENV="true"
             ;;
             --*) echo "unknown option $1"; exit 1;
             ;;
@@ -1095,15 +1095,15 @@ function cucr-checkout
         shift
     done
 
-    fs=$(ls -d -1 "$IROHMS_SYSTEM_DIR"/src/**)
-    if [ -z "$NO_IROHMS_ENV" ]
+    fs=$(ls -d -1 "$CUCR_SYSTEM_DIR"/src/**)
+    if [ -z "$NO_CUCR_ENV" ]
     then
-        fs="$IROHMS_DIR $IROHMS_ENV_TARGETS_DIR $fs"
+        fs="$CUCR_DIR $CUCR_ENV_TARGETS_DIR $fs"
     fi
     for pkg_dir in $fs
     do
-        pkg=${pkg_dir#$IROHMS_SYSTEM_DIR/src/}
-        if [ -z "$NO_IROHMS_ENV" ]
+        pkg=${pkg_dir#$CUCR_SYSTEM_DIR/src/}
+        if [ -z "$NO_CUCR_ENV" ]
         then
             if [[ $pkg =~ .cucr ]]
             then
@@ -1154,15 +1154,15 @@ function cucr-checkout
 # ----------------------------------------------------------------------------------------------------
 
 # shellcheck disable=SC1090
-source "$IROHMS_DIR"/setup/cucr-data.bash
+source "$CUCR_DIR"/setup/cucr-data.bash
 
 # ----------------------------------------------------------------------------------------------------
 #                                             CUCR-ROBOCUP
 # ----------------------------------------------------------------------------------------------------
 
-export IROHMS_ROBOCUP_BRANCH="rwc2019"
+export CUCR_ROBOCUP_BRANCH="rwc2019"
 
-function _irohms-repos-do
+function _cucr-repos-do
 {
     # Evaluates the command of the input for cucr-env, cucr-env-targets and all repo's of cucr-robotics.
     # The input can be multiple arguments, but if the input consists of multiple commands
@@ -1170,15 +1170,15 @@ function _irohms-repos-do
 
     local mem_pwd=$PWD
 
-    { [ -n "$IROHMS_DIR" ] && cd "$IROHMS_DIR"; } || { echo -e "IROHMS_DIR '$IROHMS_DIR' does not exist"; return 1; }
+    { [ -n "$CUCR_DIR" ] && cd "$CUCR_DIR"; } || { echo -e "CUCR_DIR '$CUCR_DIR' does not exist"; return 1; }
     echo -e "\033[1m[cucr-env]\033[0m"
     eval "$@"
 
-    { [ -n "$IROHMS_ENV_TARGETS_DIR" ] && cd "$IROHMS_ENV_TARGETS_DIR"; } || { echo -e "IROHMS_ENV_TARGETS_DIR '$IROHMS_ENV_TARGETS_DIR' does not exist"; return 1; }
+    { [ -n "$CUCR_ENV_TARGETS_DIR" ] && cd "$CUCR_ENV_TARGETS_DIR"; } || { echo -e "CUCR_ENV_TARGETS_DIR '$CUCR_ENV_TARGETS_DIR' does not exist"; return 1; }
     echo -e "\033[1m[cucr-env-targets]\033[0m"
     eval "$@"
 
-    local repos_dir=$IROHMS_ENV_DIR/repos/github.com/cucr-robotics
+    local repos_dir=$CUCR_ENV_DIR/repos/github.com/cucr-robotics
 
     local fs
     fs=$(ls "$repos_dir")
@@ -1188,7 +1188,7 @@ function _irohms-repos-do
 
         if [ -d "$repo_dir" ]
         then
-            cd "$repo_dir" || { echo -e "Directory '$IROHMS_ENV_TARGETS_DIR' does not exist"; return 1; }
+            cd "$repo_dir" || { echo -e "Directory '$CUCR_ENV_TARGETS_DIR' does not exist"; return 1; }
             echo -e "\033[1m[${repo%.git}]\033[0m"
             eval "$@"
         fi
@@ -1198,18 +1198,18 @@ function _irohms-repos-do
     cd "$mem_pwd"
 }
 
-function _irohms-add-git-remote
+function _cucr-add-git-remote
 {
     local remote=$1
     local server=$2
 
     if [ -z "$2" ]
     then
-        echo "Usage: _irohms-add-git-remote REMOTE SERVER
+        echo "Usage: _cucr-add-git-remote REMOTE SERVER
 
 For example:
 
-    _irohms-add-git-remote roboticssrv amigo@roboticssrv.local:
+    _cucr-add-git-remote roboticssrv amigo@roboticssrv.local:
         "
         return 1
     fi
@@ -1270,20 +1270,20 @@ For example:
         return 1
     fi
 
-    _irohms-repos-do "_irohms-add-git-remote $remote $server"
+    _cucr-repos-do "_cucr-add-git-remote $remote $server"
 }
 
-function __irohms-remove-git-remote
+function __cucr-remove-git-remote
 {
     local remote=$1
 
     if [ -z "$1" ]
     then
-        echo "Usage: __irohms-remove-git-remote REMOTE
+        echo "Usage: __cucr-remove-git-remote REMOTE
 
 For example:
 
-    __irohms-remove-git-remote roboticssrv
+    __cucr-remove-git-remote roboticssrv
         "
         return 1
     fi
@@ -1304,15 +1304,15 @@ For example:
     echo -e "remote '$remote' doesn't exist"
 }
 
-function _irohms-remove-git-remote
+function _cucr-remove-git-remote
 {
     if [ -z "$1" ]
     then
-        echo "Usage: _irohms-remove-git-remote REMOTE
+        echo "Usage: _cucr-remove-git-remote REMOTE
 
 For example:
 
-    _irohms-remove-git-remote roboticssrv
+    _cucr-remove-git-remote roboticssrv
         "
         return 1
     fi
@@ -1325,7 +1325,7 @@ For example:
         return 1
     fi
 
-    _irohms-repos-do "__irohms-remove-git-remote $remote"
+    _cucr-repos-do "__cucr-remove-git-remote $remote"
 }
 
 function _git_remote_checkout
@@ -1370,18 +1370,18 @@ For example:
     local remote=$1
     local branch=$2
 
-    _irohms-repos-do "git fetch $remote; _git_remote_checkout $remote $branch"
+    _cucr-repos-do "git fetch $remote; _git_remote_checkout $remote $branch"
 }
 
-function _irohms-robocup-remote-checkout
+function _cucr-robocup-remote-checkout
 {
     if [ -z "$2" ]
     then
-        echo "Usage: _irohms-robocup-remote-checkout REMOTE BRANCH
+        echo "Usage: _cucr-robocup-remote-checkout REMOTE BRANCH
 
 For example:
 
-    _irohms-robocup-remote-checkout roboticssrv robocup
+    _cucr-robocup-remote-checkout roboticssrv robocup
         "
         return 1
     fi
@@ -1404,20 +1404,20 @@ function cucr-robocup-remote-checkout
     # doesn't perform a checkout, when current branch is already setup
     # to the roboticssrv
     local remote="roboticssrv"
-    local branch=$IROHMS_ROBOCUP_BRANCH
+    local branch=$CUCR_ROBOCUP_BRANCH
 
-    _irohms-repos-do "_irohms-robocup-remote-checkout $remote $branch"
+    _cucr-repos-do "_cucr-robocup-remote-checkout $remote $branch"
 }
 
-function _irohms-robocup-change-remote
+function _cucr-robocup-change-remote
 {
     if [ -z "$2" ]
     then
-        echo "Usage: _irohms-robocup-change-remote BRANCH REMOTE
+        echo "Usage: _cucr-robocup-change-remote BRANCH REMOTE
 
 For example:
 
-    _irohms-robocup-change-remote robocup origin
+    _cucr-robocup-change-remote robocup origin
         "
         return 1
     fi
@@ -1467,7 +1467,7 @@ For example:
     local branch=$1
     local remote=$2
 
-    _irohms-repos-do "_irohms-robocup-change-remote $branch $remote"
+    _cucr-repos-do "_cucr-robocup-change-remote $branch $remote"
 }
 
 function cucr-robocup-ssh-copy-id
@@ -1477,26 +1477,26 @@ function cucr-robocup-ssh-copy-id
 
 function _allow_robocup_branch
 {
-    # allow IROHMS_ROBOCUP_BRANCH as branch in cucr-status
-    if [ ! -f "$IROHMS_DIR"/user/config/robocup ]
+    # allow CUCR_ROBOCUP_BRANCH as branch in cucr-status
+    if [ ! -f "$CUCR_DIR"/user/config/robocup ]
     then
-        echo $IROHMS_ROBOCUP_BRANCH > "$IROHMS_DIR"/user/config/robocup
+        echo $CUCR_ROBOCUP_BRANCH > "$CUCR_DIR"/user/config/robocup
     fi
 }
 
 function _disallow_robocup_branch
 {
-    # disallow IROHMS_ROBOCUP_BRANCH as branch in cucr-status
-    if [ -f "$IROHMS_DIR"/user/config/robocup ]
+    # disallow CUCR_ROBOCUP_BRANCH as branch in cucr-status
+    if [ -f "$CUCR_DIR"/user/config/robocup ]
     then
-        rm "$IROHMS_DIR"/user/config/robocup
+        rm "$CUCR_DIR"/user/config/robocup
     fi
 }
 
 function cucr-robocup-set-github
 {
-    cucr-robocup-change-remote $IROHMS_ROBOCUP_BRANCH origin
-    _irohms-git-checkout-default-branch
+    cucr-robocup-change-remote $CUCR_ROBOCUP_BRANCH origin
+    _cucr-git-checkout-default-branch
     _disallow_robocup_branch
 }
 
@@ -1529,14 +1529,14 @@ function _ping_bool
 
 function cucr-robocup-install-package
 {
-    local repos_dir=$IROHMS_ENV_DIR/repos/github.com/cucr-robotics
+    local repos_dir=$CUCR_ENV_DIR/repos/github.com/cucr-robotics
     local repo_dir=$repos_dir/${1}.git
 
     local mem_pwd=$PWD
 
     local remote="roboticssrv"
     local server="amigo@roboticssrv.local:"
-    local branch=$IROHMS_ROBOCUP_BRANCH
+    local branch=$CUCR_ROBOCUP_BRANCH
 
     # If directory already exists, return
     [ -d "$repo_dir" ] && return 0
@@ -1555,9 +1555,9 @@ function cucr-robocup-install-package
 
     if [ -f "$repo_dir/package.xml" ]
     then
-        if [ ! -h "$IROHMS_ENV_DIR"/system/src/"$1" ]
+        if [ ! -h "$CUCR_ENV_DIR"/system/src/"$1" ]
         then
-            ln -s "$repo_dir" "$IROHMS_ENV_DIR"/system/src/"$1"
+            ln -s "$repo_dir" "$CUCR_ENV_DIR"/system/src/"$1"
         fi
     else
         # multiple packages in one repo
@@ -1568,29 +1568,29 @@ function cucr-robocup-install-package
             local pkg_dir=$repo_dir/$pkg
             if [ -f "$pkg_dir/package.xml" ]
             then
-                if [ ! -h "$IROHMS_ENV_DIR"/system/src/"$pkg" ]
+                if [ ! -h "$CUCR_ENV_DIR"/system/src/"$pkg" ]
                 then
-                    ln -s "$pkg_dir" "$IROHMS_ENV_DIR"/system/src/"$pkg"
+                    ln -s "$pkg_dir" "$CUCR_ENV_DIR"/system/src/"$pkg"
                 fi
             fi
         done
     fi
 
     # mark target as installed
-    touch "$IROHMS_ENV_DIR"/.env/installed/ros-"$1"
+    touch "$CUCR_ENV_DIR"/.env/installed/ros-"$1"
 }
 
 function cucr-robocup-update
 {
-    _irohms-repos-do "git pull --ff-only"
+    _cucr-repos-do "git pull --ff-only"
 
     # Copy rsettings file
     if [ "$ROBOT_REAL" != "true" ]
     then
-        rsettings_file=$IROHMS_ENV_TARGETS_DIR/cucr-common/rsettings_file
+        rsettings_file=$CUCR_ENV_TARGETS_DIR/cucr-common/rsettings_file
         if [ -f "$rsettings_file" ]
         then
-            cp "$rsettings_file" "$IROHMS_DIR"/.rsettings
+            cp "$rsettings_file" "$CUCR_DIR"/.rsettings
         fi
     fi
 }

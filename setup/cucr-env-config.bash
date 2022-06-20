@@ -20,90 +20,90 @@ function _set_export_option
 
 function cucr-env-git-use-ssh
 {
-    local option="IROHMS_GIT_USE_SSH"
+    local option="CUCR_GIT_USE_SSH"
     local value="true"
-    _set_export_option "$option" "$value" "$irohms_env_dir"/.env/setup/user_setup.bash
+    _set_export_option "$option" "$value" "$cucr_env_dir"/.env/setup/user_setup.bash
 
     echo -e "[cucr-env](config) Environment '$env' set to use SSH for git as default"
 }
 
 function cucr-env-git-use-https
 {
-    local option="IROHMS_GIT_USE_SSH"
+    local option="CUCR_GIT_USE_SSH"
     local value="false"
-    _set_export_option "$option" "$value" "$irohms_env_dir"/.env/setup/user_setup.bash
+    _set_export_option "$option" "$value" "$cucr_env_dir"/.env/setup/user_setup.bash
 
     echo -e "[cucr-env](config) Environment '$env' set to use HTTPS for git as default"
 }
 
 function cucr-env-github-use-ssh
 {
-    local option="IROHMS_GITHUB_USE_SSH"
+    local option="CUCR_GITHUB_USE_SSH"
     local value="true"
-    _set_export_option "$option" "$value" "$irohms_env_dir"/.env/setup/user_setup.bash
+    _set_export_option "$option" "$value" "$cucr_env_dir"/.env/setup/user_setup.bash
 
     echo -e "[cucr-env](config) Environment '$env' set to use SSH for GitHub"
 }
 
 function cucr-env-github-use-https
 {
-    local option="IROHMS_GITHUB_USE_SSH"
+    local option="CUCR_GITHUB_USE_SSH"
     local value="false"
-    _set_export_option "$option" "$value" "$irohms_env_dir"/.env/setup/user_setup.bash
+    _set_export_option "$option" "$value" "$cucr_env_dir"/.env/setup/user_setup.bash
 
     echo -e "[cucr-env](config) Environment '$env' set to use HTTPS for GitHub"
 }
 
 function cucr-env-gitlab-use-ssh
 {
-    local option="IROHMS_GITLAB_USE_SSH"
+    local option="CUCR_GITLAB_USE_SSH"
     local value="true"
-    _set_export_option "$option" "$value" "$irohms_env_dir"/.env/setup/user_setup.bash
+    _set_export_option "$option" "$value" "$cucr_env_dir"/.env/setup/user_setup.bash
 
     echo -e "[cucr-env](config) Environment '$env' set to use SSH for GitLab"
 }
 
 function cucr-env-gitlab-use-https
 {
-    local option="IROHMS_GITLAB_USE_SSH"
+    local option="CUCR_GITLAB_USE_SSH"
     local value="false"
-    _set_export_option "$option" "$value" "$irohms_env_dir"/.env/setup/user_setup.bash
+    _set_export_option "$option" "$value" "$cucr_env_dir"/.env/setup/user_setup.bash
 
     echo -e "[cucr-env](config) Environment '$env' set to use HTTPS for GitLab"
 }
 
 function cucr-env-install-test-depend
 {
-    local option="IROHMS_INSTALL_TEST_DEPEND"
+    local option="CUCR_INSTALL_TEST_DEPEND"
     local value="true"
-    _set_export_option "$option" "$value" "$irohms_env_dir"/.env/setup/user_setup.bash
+    _set_export_option "$option" "$value" "$cucr_env_dir"/.env/setup/user_setup.bash
 
     echo -e "[cucr-env](config) Environment '$env' set to install test dependencies"
 }
 
 function cucr-env-not-install-test-depend
 {
-    local option="IROHMS_INSTALL_TEST_DEPEND"
+    local option="CUCR_INSTALL_TEST_DEPEND"
     local value="false"
-    _set_export_option "$option" "$value" "$irohms_env_dir"/.env/setup/user_setup.bash
+    _set_export_option "$option" "$value" "$cucr_env_dir"/.env/setup/user_setup.bash
 
     echo -e "[cucr-env](config) Environment '$env' set to not install test dependencies"
 }
 
 function cucr-env-install-doc-depend
 {
-    local option="IROHMS_INSTALL_DOC_DEPEND"
+    local option="CUCR_INSTALL_DOC_DEPEND"
     local value="true"
-    _set_export_option "$option" "$value" "$irohms_env_dir"/.env/setup/user_setup.bash
+    _set_export_option "$option" "$value" "$cucr_env_dir"/.env/setup/user_setup.bash
 
     echo -e "[cucr-env](config) Environment '$env' set to install doc dependencies"
 }
 
 function cucr-env-not-install-doc-depend
 {
-    local option="IROHMS_INSTALL_DOC_DEPEND"
+    local option="CUCR_INSTALL_DOC_DEPEND"
     local value="false"
-    _set_export_option "$option" "$value" "$irohms_env_dir"/.env/setup/user_setup.bash
+    _set_export_option "$option" "$value" "$cucr_env_dir"/.env/setup/user_setup.bash
 
     echo -e "[cucr-env](config) Environment '$env' set to not install doc dependencies"
 }
@@ -116,11 +116,11 @@ else
     env=$1
     shift
 
-    irohms_env_dir="$(cat "$IROHMS_DIR"/user/envs/"$env")"
+    cucr_env_dir="$(cat "$CUCR_DIR"/user/envs/"$env")"
 
     if [ -z "$1" ]
     then
-        edit "${irohms_env_dir}/.env/setup/user_setup.bash"
+        edit "${cucr_env_dir}/.env/setup/user_setup.bash"
     else
         functions=$(compgen -A function | grep "cucr-env-")
         functions=${functions//cucr-env-/}

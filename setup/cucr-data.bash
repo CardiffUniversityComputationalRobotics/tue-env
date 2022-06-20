@@ -101,7 +101,7 @@ For example, to store everything in the current folder, use:
     fi
 }
 
-function _irohms-data
+function _cucr-data
 {
     local cur=${COMP_WORDS[COMP_CWORD]}
 
@@ -110,4 +110,4 @@ function _irohms-data
         mapfile -t COMPREPLY < <(compgen -W "update-dirs list update store" -- "$cur")
     fi
 }
-complete -F _irohms-data cucr-data
+complete -F _cucr-data cucr-data
