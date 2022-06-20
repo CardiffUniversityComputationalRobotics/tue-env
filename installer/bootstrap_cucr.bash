@@ -86,7 +86,7 @@ source ~/.cucr/setup_cucr.bash
 mkdir -p ~/ros/$CUCR_ROS_DISTRO
 
 # Initialize ros environment directory incl. targets
-cucr-env init ros-$CUCR_ROS_DISTRO ~/ros/$CUCR_ROS_DISTRO git@github.com:CardiffUniversityComputationalRobotics/tue-env.git
+cucr-env init ros-$CUCR_ROS_DISTRO ~/ros/$CUCR_ROS_DISTRO git@github.com:CardiffUniversityComputationalRobotics/tue-env-targets.git
 
 # Set the correct ROS version for this environment
 echo "export CUCR_ROS_DISTRO=$CUCR_ROS_DISTRO" >> ~/ros/$CUCR_ROS_DISTRO/.env/setup/user_setup.bash
