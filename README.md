@@ -6,7 +6,7 @@ Package manager that can be used to install (ROS) dependencies
 
 ### Ubuntu 16.04/18.04/20.04
 
-Standard cucr-env installation with targets from [cucr-env-targets](https://github.com/juandhv/tue-env-targets)
+Standard cucr-env installation with targets from [cucr-env-targets](https://github.com/CardiffUniversityComputationalRobotics/tue-env-targets)
 
 ```bash
 source <(wget -O - https://raw.githubusercontent.com/CardiffUniversityComputationalRobotics/tue-env/cucr/installer/bootstrap_cucr.bash)
