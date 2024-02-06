@@ -1,0 +1,106 @@
+name: 'TUe CI'
+description: 'Install, build and test package in tue-env environment'
+inputs:
+  image:
+    default: 'ghcr.io/tue-robotics/tue-env-ros-noetic'
+    description: 'Container Image to be used'
+    required: false
+    type: string
+  package:
+    description: 'Package name'
+    required: true
+    type: string
+  ssh-key:
+    description: 'SSH key used during install process'
+    required: false
+    type: string
+  ssh-known-hosts:
+    description: 'Hosts to be added known_hosts'
+    required: false
+    type: string
+runs:
+  using: "composite"
+  steps:
+    - name: Cache ccache
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.ccache
+        key: ${{ runner.os }}-ccache-${{ github.event.repository.name }}-${{ inputs.package }}-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-ccache-${{ github.event.repository.name }}-${{ inputs.package }}-
+          ${{ runner.os }}-ccache-${{ github.event.repository.name }}-
+          ${{ runner.os }}-ccache-
+
+    - name: Cache pip
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ github.event.repository.name }}-${{ inputs.package }}-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-pip-${{ github.event.repository.name }}-${{ inputs.package }}-
+          ${{ runner.os }}-pip-${{ github.event.repository.name }}-
+          ${{ runner.os }}-pip-
+
+    - name: Install
+      id: install
+      run: |
+        echo "::group::install-package.sh"
+        GITHUB_REF=${GITHUB_REF#refs/heads/}
+        GITHUB_REF=${GITHUB_REF#refs/tags/}
+        BRANCH=${GITHUB_BASE_REF:-${GITHUB_REF}}
+        DEFAULT_BRANCH=${{ github.event.repository.default_branch }}
+        if [[ "$BRANCH" == "$DEFAULT_BRANCH" ]]
+        then
+            BRANCH=""
+        fi
+        PULLREQUEST=${{ github.event.number }}
+        PULLREQUEST=${PULLREQUEST:-false}
+        SSH_KEY="${{ inputs.ssh-key }}"
+        SSH_KNOWN_HOSTS="${{ inputs.ssh-known-hosts }}"
+        if [[ -n "${SSH_KEY}" ]]
+        then
+          SSH_ARG="--ssh"
+          mkdir -p "${HOME}"/.ssh
+          echo "${SSH_KEY}" > "${HOME}"/.ssh/ci_ssh_key
+          SSH_KEY_ARG="--ssh-key=${HOME}/.ssh/ci_ssh_key"
+        fi
+        if [[ -n "${SSH_KNOWN_HOSTS}" ]]
+        then
+          echo -e "\e[35m\e[1m mkdir -p ${HOME}/.ssh \e[0m"
+          mkdir -p ${HOME}/.ssh
+          for host in ${SSH_KNOWN_HOSTS}
+          do
+            echo -e "\e[35m\e[1m ssh-keyscan -t rsa -H \"${host}\" 2>&1 | tee -a ${HOME}/.ssh/known_hosts \e[0m"
+            ssh-keyscan -t rsa -H "${host}" 2>&1 | tee -a "${HOME}"/.ssh/known_hosts
+          done
+        fi
+        ${{ github.action_path }}/../install-package.sh \
+          --image=${{ inputs.image }} \
+          --package=${{ inputs.package }} \
+          --branch="${BRANCH}" \
+          --commit="${GITHUB_SHA}" \
+          --pullrequest="${PULLREQUEST}" \
+          "${SSH_ARG}" \
+          "${SSH_KEY_ARG}"
+        echo "::endgroup::"
+      shell: bash
+
+    - name: Build
+      id: build
+      run: |
+        echo "::group::build-package.sh"
+        ${{ github.action_path }}/../build-package.sh \
+          --package=${{ inputs.package }}
+        echo "::endgroup::"
+      shell: bash
+
+    - name: Test
+      id: test
+      run: |
+        echo "::group::test-package.sh"
+        ${{ github.action_path }}/../test-package.sh \
+          --package=${{ inputs.package }}
+        echo "::endgroup::"
+      shell: bash

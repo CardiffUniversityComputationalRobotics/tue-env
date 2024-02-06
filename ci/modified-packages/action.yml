@@ -1,0 +1,34 @@
+name: 'Modified packages'
+description: 'Determine modified packages based on commit range'
+inputs:
+  commit-range:
+    description: 'Range of commits to determine modified files'
+    required: true
+    type: string
+  ignored-packages:
+    description: 'Packages to be ignored at all times'
+    required: false
+    type: string
+outputs:
+  packages:
+    description: 'Modified packages'
+    value: ${{ steps.packages.outputs.packages }}
+runs:
+  using: "composite"
+  steps:
+    - name: Modified packages
+      id: packages
+      run: |
+        PULLREQUEST=${{ github.event.number }}
+        PULLREQUEST=${PULLREQUEST:-false}
+        GITHUB_REF=${GITHUB_REF#refs/heads/}
+        GITHUB_REF=${GITHUB_REF#refs/tags/}
+        BRANCH=${GITHUB_BASE_REF:-${GITHUB_REF}}
+        DEFAULT_BRANCH=${{ github.event.repository.default_branch }}
+        if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]] || ([[ "${GITHUB_EVENT_NAME}" == "push" ]] || [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]] && [[ "${BRANCH}" == "${DEFAULT_BRANCH}" ]])
+        then
+            ALL=true
+        fi
+        source ${{ github.action_path }}/../packages.sh --pullrequest=${PULLREQUEST} --branch=${GITHUB_BASE_REF} --commit-range=${{ inputs.commit-range }} --all=${ALL} ${{ inputs.ignored-packages }}
+        echo "packages=${PACKAGES_LIST}" >> $GITHUB_OUTPUT
+      shell: bash --noprofile --norc -o pipefail {0}

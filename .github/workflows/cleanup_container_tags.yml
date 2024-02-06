@@ -1,0 +1,43 @@
+name: Cleanup container tags
+
+on: delete
+
+jobs:
+  organization_containers:
+    name: Get all containers in the organization
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.organization_containers.outputs.packages }}
+    steps:
+      - name: Organization containers
+        id: organization_containers
+        uses: tue-robotics/tue-env/ci/organization-packages@master
+        with:
+          package-type: container
+          token: ${{ secrets.READ_PACKAGES_TOKEN }}
+
+  delete_container_tag:
+    name: Delete container tag
+    runs-on: ubuntu-latest
+    needs: organization_containers
+    strategy:
+      fail-fast: false
+      matrix:
+        package_name: ${{ fromJson(needs.organization_containers.outputs.packages) }}
+    steps:
+      - name: Generate tag
+        id: generate-tag
+        run: |
+          TAG=$(echo "${{ github.event.ref }}" | tr '[:upper:]' '[:lower:]' | sed -e 's:/:_:g')
+          echo -e "\e[35m\e[tag=${TAG} >> \$GITHUB_OUTPUT\e[0m"
+          echo "tag=${TAG}" >> ${GITHUB_OUTPUT}
+      - name: Delete tags
+        uses: vlaurin/action-ghcr-prune@v0.6.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          organization: tue-robotics
+          container: ${{ matrix.package_name }}
+          prune-tags-regexes: |
+            ^${{ steps.generate-tag.outputs.tag }}$
+            ^${{ steps.generate-tag.outputs.tag }}-amd64$
+            ^${{ steps.generate-tag.outputs.tag }}-arm64$
