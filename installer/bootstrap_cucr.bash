@@ -231,3 +231,5 @@ source ${env_dir}/setup.bash" >> ~/.bashrc
     # shellcheck disable=SC1090
     source "${env_dir}"/setup.bash
 }
+
+main "$@" || echo "[cucr-env](bootstrap) Error! Could not install cucr-env."
