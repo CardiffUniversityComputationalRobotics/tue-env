@@ -13,7 +13,7 @@ function cucr-data
         mkdir -p ~/ros/data
         mv ~/ros/data-tmp-dir ~/ros/data/private
 
-        echo -e "\e[0;33m[IMPORTANT] I moved the data folder. '~/ros/data' has now become '~/ros/data/private'\033[0m"
+        echo -e "\e[0;33m[IMPORTANT] I moved the data folder. '~/ros/data' has now become '~/ros/data/private'\e[0m"
         echo ""
     fi
 
@@ -34,6 +34,7 @@ function cucr-data
         return 1
     fi
 
+    local cmd
     cmd=$1
     shift
 
@@ -50,7 +51,8 @@ function cucr-data
         fi
 
         # Determine current directory relative to local data dir root
-        local rel_dir=${PWD#$LOCAL_DATA_DIR}
+        local rel_dir
+        rel_dir=${PWD#"${LOCAL_DATA_DIR}"}
 
         # shellcheck disable=SC2029
         ssh $ROBOTICSSRV_LOGIN "ls $REMOTE_DATA_DIR/$rel_dir -alh"
@@ -64,9 +66,10 @@ function cucr-data
         fi
 
         # Determine current directory relative to local data dir root
-        local rel_dir=${PWD#$LOCAL_DATA_DIR}
+        local rel_dir
+        rel_dir=${PWD#"${LOCAL_DATA_DIR}"}
 
-        rsync "$ROBOTICSSRV_LOGIN":"$REMOTE_DATA_DIR"/"$rel_dir"/ . -av --progress --exclude=".svn"
+        rsync "$ROBOTICSSRV_LOGIN":"$REMOTE_DATA_DIR"/"$rel_dir"/ . -av --progress --exclude=".git"
     elif [[ $cmd == "store" ]]
     then
         if [ -z "$1" ]
@@ -81,7 +84,8 @@ For example, to store everything in the current folder, use:
             return 1
         fi
 
-        local target="$1"
+        local target
+        target="$1"
         if [[ $target != "/"* ]]
         then
             target="$PWD/$target"
@@ -95,15 +99,17 @@ For example, to store everything in the current folder, use:
         fi
 
         # Determine current directory relative to local data dir root
-        local rel_dir=${target#$LOCAL_DATA_DIR}
+        local rel_dir
+        rel_dir=${target#"${LOCAL_DATA_DIR}"}
 
-        rsync "$LOCAL_DATA_DIR"/./"$rel_dir" "$ROBOTICSSRV_LOGIN":"$REMOTE_DATA_DIR"/ -av --relative --progress --exclude=".svn"
+        rsync "$LOCAL_DATA_DIR"/./"$rel_dir" "$ROBOTICSSRV_LOGIN":"$REMOTE_DATA_DIR"/ -av --relative --progress --exclude=".git"
     fi
 }
 
 function _cucr-data
 {
-    local cur=${COMP_WORDS[COMP_CWORD]}
+    local cur
+    cur=${COMP_WORDS[COMP_CWORD]}
 
     if [ "$COMP_CWORD" -eq 1 ]
     then

@@ -3,7 +3,7 @@ CUCR_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 export CUCR_DIR
 
 # Load cucr-env tool
-# shellcheck disable=SC1090
+# shellcheck disable=SC1091
 source "$CUCR_DIR"/setup/cucr-env.bash
 
 # ------------------------------------------
@@ -54,18 +54,18 @@ fi
 
 if [ -f "$CUCR_ENV_DIR"/.env/setup/user_setup.bash ]
 then
-    # shellcheck disable=SC1090
+    # shellcheck disable=SC1091
     source "$CUCR_ENV_DIR"/.env/setup/user_setup.bash
 fi
 
 # -----------------------------------------
 # Load all the bash functions
-# shellcheck disable=SC1090
+# shellcheck disable=SC1091
 source "$CUCR_DIR"/setup/cucr-functions.bash
 
 if [ -f "$CUCR_DIR"/setup/cucr-misc.bash ]
 then
-    # shellcheck disable=SC1090
+    # shellcheck disable=SC1091
     source "$CUCR_DIR"/setup/cucr-misc.bash
 fi
 
@@ -82,8 +82,9 @@ then
     export PATH=$CUCR_BIN${PATH:+:${PATH}}
 fi
 
-if [ -f "$CUCR_ENV_DIR"/.env/setup/target_setup.bash ]
+# Source the python virtual environment if it exists
+if [[ -d "${CUCR_ENV_DIR}"/.venv/"${CUCR_ENV}" ]]
 then
     # shellcheck disable=SC1090
-    source "$CUCR_ENV_DIR"/.env/setup/target_setup.bash
+    source "${CUCR_ENV_DIR}"/.venv/"${CUCR_ENV}"/bin/activate
 fi

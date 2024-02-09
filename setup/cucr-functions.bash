@@ -1,10 +1,18 @@
 #! /usr/bin/env bash
 
-# shellcheck disable=SC2153
-CUCR_DEV_DIR=$CUCR_ENV_DIR/dev
-CUCR_SYSTEM_DIR=$CUCR_ENV_DIR/system
-export CUCR_DEV_DIR
+CUCR_SYSTEM_DIR="${CUCR_ENV_DIR}"/system  # This variable is deprecated and will be removed in a future version of the tool
+CUCR_WS_DIR="${CUCR_SYSTEM_DIR}"
 export CUCR_SYSTEM_DIR
+export CUCR_WS_DIR
+
+if [[ -z "${CUCR_REPOS_DIR}" ]]  # Only set this variable if there exists no default in user_setup.bash
+then
+    CUCR_REPOS_DIR="${CUCR_ENV_DIR}"/repos
+    export CUCR_REPOS_DIR
+fi
+
+CUCR_RELEASE_DIR="${CUCR_SYSTEM_DIR}"/release
+export CUCR_RELEASE_DIR
 
 # ----------------------------------------------------------------------------------------------------
 #                                        HELPER FUNCTIONS
@@ -32,10 +40,11 @@ function cucr-apt-select-mirror
     # It uses apt-select to generate a new sources.list, based on the current one.
     # All Arguments to this functions are passed on to apt-select, so check the
     # apt-select documentation for all options.
-    hash pip2 2> /dev/null|| sudo apt-get install --assume-yes python-pip
-    hash apt-select 2> /dev/null|| sudo -H pip2 install apt-select
+    hash pip3 2> /dev/null|| sudo apt-get install --assume-yes python3-pip
+    hash apt-select 2> /dev/null|| sudo python3 -m pip install -U apt-select
 
-    local mem_pwd=$PWD
+    local mem_pwd
+    mem_pwd=$PWD
     # shellcheck disable=SC2164
     cd /tmp
     local err_code
@@ -73,12 +82,16 @@ function _cucr-git-get-default-branch
     echo "$default_branch"
 }
 
+export -f _cucr-git-get-default-branch
+
 function __cucr-git-checkout-default-branch
 {
     local default_branch
-    default_branch=$(_cucr-git-get-default-branch)
-    _git_remote_checkout origin "$default_branch"
+    default_branch=$(_cucr-git-get-default-branch "$1")
+    _git_remote_checkout "$1" origin "$default_branch"
 }
+
+export -f __cucr-git-checkout-default-branch
 
 function _cucr-git-checkout-default-branch
 {
@@ -124,6 +137,7 @@ function _cucr-git-clean-local
     # branch before cleanup
     if [[ "$stale_branches" == *$(git rev-parse --abbrev-ref HEAD)* ]]
     then
+        # shellcheck disable=SC2119
         __cucr-git-checkout-default-branch
 
         git pull --ff-only --prune > /dev/null 2>&1
@@ -136,9 +150,9 @@ function _cucr-git-clean-local
         fi
     fi
 
-    local stale_branch
-    local stale_branch_count=0
-    local unmerged_stale_branches=""
+    local stale_branch stale_branch_count unmerged_stale_branches
+    stale_branch_count=0
+    unmerged_stale_branches=""
     for stale_branch in $stale_branches
     do
         git branch -d "$stale_branch" > /dev/null 2>&1
@@ -152,7 +166,7 @@ function _cucr-git-clean-local
             unmerged_stale_branches="${unmerged_stale_branches:+${unmerged_stale_branches} } $stale_branch"
         else
             ((stale_branch_count++))
-            if [ $stale_branch_count -eq 1 ]
+            if [ "${stale_branch_count}" -eq 1 ]
             then
                 echo -e "\e[36m"
                 echo -e "Removing stale branches:"
@@ -227,7 +241,8 @@ function cucr-git-clean-local
 
 function __cucr-git-clean-local
 {
-    local IFS=$'\n'
+    local IFS options
+    IFS=$'\n'
     options="'--force-remove'"
     # shellcheck disable=SC2178
     mapfile -t COMPREPLY < <(compgen -W "$(echo -e "$options")" -- "$cur")
@@ -241,11 +256,16 @@ complete -F __cucr-git-clean-local _cucr-git-clean-local
 
 function _git_split_url
 {
-    local url=$1
+    local url
+    url=$1
 
-    local web_address
-    local domain_name
-    local repo_address
+    # The regex can be further constrained using regex101.com
+    if ! grep -P -q "^(?:(?:git@[^:]+:)|(?:https://))[^:]+\.git$" <<< "${url}"
+    then
+        return 1
+    fi
+
+    local web_address domain_name repo_address
     if [[ "$url" == *"@"* ]] # SSH
     then
         web_address=${url#git@}
@@ -263,16 +283,22 @@ export -f _git_split_url # otherwise not available in sourced files
 
 function _git_https
 {
-    local url=$1
+    local url
+    url=$1
     [[ $url =~ ^https://.*\.git$ ]] && echo "$url" && return 0
 
     local output
     output=$(_git_split_url "$url")
 
-    local array
+    if [[ -z "${output}" ]]
+    then
+        return 1
+    fi
+
+    local array domain_name repo_address
     read -r -a array <<< "$output"
-    local domain_name=${array[0]}
-    local repo_address=${array[1]}
+    domain_name=${array[0]}
+    repo_address=${array[1]}
 
     echo "https://$domain_name/$repo_address.git"
 }
@@ -280,16 +306,22 @@ export -f _git_https # otherwise not available in sourced files
 
 function _git_ssh
 {
-    local url=$1
+    local url
+    url=$1
     [[ $url =~ ^git@.*\.git$ ]] && echo "$url" && return 0
 
     local output
     output=$(_git_split_url "$url")
 
-    local array
+    if [[ -z "${output}" ]]
+    then
+        return 1
+    fi
+
+    local array domain_name repo_address
     read -r -a array <<< "$output"
-    local domain_name=${array[0]}
-    local repo_address=${array[1]}
+    domain_name=${array[0]}
+    repo_address=${array[1]}
 
     echo "git@$domain_name:$repo_address.git"
 }
@@ -297,8 +329,8 @@ export -f _git_ssh # otherwise not available in sourced files
 
 function _cucr_git_https_or_ssh
 {
-    local input_url=$1
-    local output_url
+    local input_url output_url test_var
+    input_url=$1
 
     # TODO: Remove the use of CUCR_USE_SSH when migration to CUCR_GIT_USE_SSH is complete
     [[ -v "CUCR_USE_SSH" ]] && test_var="CUCR_USE_SSH"
@@ -308,147 +340,260 @@ function _cucr_git_https_or_ssh
     [[ "$input_url" == *"github"* ]] && [[ -v "CUCR_GITHUB_USE_SSH" ]] && test_var="CUCR_GITHUB_USE_SSH"
     [[ "$input_url" == *"gitlab"* ]] && [[ -v "CUCR_GITLAB_USE_SSH" ]] && test_var="CUCR_GITLAB_USE_SSH"
 
-    if [[ "${!test_var}" == "true" ]]
+    if [[ -n "$test_var" && "${!test_var}" == "true" ]]
     then
         output_url=$(_git_ssh "$input_url")
     else
         output_url=$(_git_https "$input_url")
     fi
 
+    if [[ -z "${output_url}" ]]
+    then
+        return 1
+    fi
+
     echo "$output_url"
 }
 export -f _cucr_git_https_or_ssh # otherwise not available in sourced files
+
+######################################################################################################################
+# Generate the path where a cloned git repository will be stored, based on its url
+# Globals:
+#   CUCR_REPOS_DIR, used as the base directory of the generated path
+# Arguments:
+#   URL, A valid git repository url
+# Return:
+#   Path where the repository must be cloned
+######################################################################################################################
+function _git_url_to_repos_dir
+{
+    local url output
+    url=$1
+    output=$(_git_split_url "$url")
+
+    if [[ -z "${output}" ]]
+    then
+        return 1
+    fi
+
+    local array domain_name repo_address repos_dir
+    read -r -a array <<< "$output"
+    domain_name=${array[0]}
+    repo_address=${array[1]}
+    repos_dir="$CUCR_REPOS_DIR"/"$domain_name"/"$repo_address"
+
+    echo "${repos_dir}"
+}
+export -f _git_url_to_repos_dir # otherwise not available in sourced files
+
+######################################################################################################################
+# Perform a deep fetch on a git repository
+#
+# Arguments:
+#   repo_dir, Path to valid git directory
+#     If no directory path specified, current dir is assumed
+######################################################################################################################
+function cucr-git-deep-fetch
+{
+    local repo_dir
+    repo_dir="${1}"
+
+    if [[ -z "${repo_dir}" ]]
+    then
+        repo_dir="."
+    fi
+
+    git -C "${repo_dir}" config remote.origin.fetch "+refs/heads/*:refs/remotes/origin/*"
+    git -C "${repo_dir}" remote update
+}
+export -f cucr-git-deep-fetch
 
 # ----------------------------------------------------------------------------------------------------
 #                                            CUCR-MAKE
 # ----------------------------------------------------------------------------------------------------
 
+# catkin build/test worflow
+# catkin build -DCATKIN_ENABLE_TESTING=OFF # As we don't install test dependencies by default. Test shouldn't be build
+# When you want to test, make sure the test dependencies are installed
+# catkin build -DCATKIN_ENABLE_TESTING=ON # This will trigger cmake and will create the targets and build the tests
+# catkin test # Run the tests. This will not trigger cmake, so it isn't needed to provide -DCATKIN_ENABLE_TESTING=ON.
+
+
 function cucr-make
 {
-    if [ -n "$CUCR_ROS_DISTRO" ] && [ -d "$CUCR_SYSTEM_DIR" ]
+    [[ -z "${CUCR_ROS_DISTRO}" ]] && { echo -e "\e[31;1mError! cucr-env variable CUCR_ROS_DISTRO not set.\e[0m"; return 1; }
+
+    [[ -z "${CUCR_ROS_VERSION}" ]] && { echo -e "\e[31;1mError! CUCR_ROS_VERSION is not set.\nSet CUCR_ROS_VERSION before executing this function.\e[0m"; return 1; }
+
+    [[ ! -d "${CUCR_SYSTEM_DIR}" ]] && { echo -e "\e[31;1mError! The workspace '${CUCR_SYSTEM_DIR}' does not exist. Run 'cucr-get install ros${CUCR_ROS_VERSION}' first.\e[0m"; return 1; }
+
+    if [[ "${CUCR_ROS_VERSION}" -eq 1 ]]
     then
-        local build_tool=""
+        local build_tool
+        build_tool=""
         if [ -f "$CUCR_SYSTEM_DIR"/devel/.built_by ]
         then
-            build_tool=$(cat "$CUCR_SYSTEM_DIR"/devel/.built_by)
+            build_tool=$(cat "$CUCR_SYSTEM_DIR"/build/.built_by)
         fi
         case $build_tool in
         'catkin build')
-            catkin build --workspace "$CUCR_SYSTEM_DIR" "$@"
+            /usr/bin/python3 "$(command -v catkin)" build --workspace "$CUCR_SYSTEM_DIR" "$@"
+            return $?
             ;;
         '')
-            catkin config --init --mkdirs --workspace "$CUCR_SYSTEM_DIR" --extend /opt/ros/"$CUCR_ROS_DISTRO" -DCMAKE_BUILD_TYPE=RelWithDebInfo
-            catkin build --workspace "$CUCR_SYSTEM_DIR" "$@"
+            /usr/bin/python3 "$(command -v catkin)" config --init --mkdirs --workspace "$CUCR_SYSTEM_DIR" --extend /opt/ros/"$CUCR_ROS_DISTRO" -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCATKIN_ENABLE_TESTING=OFF
+            /usr/bin/python3 "$(command -v catkin)" build --workspace "$CUCR_SYSTEM_DIR" "$@"
             touch "$CUCR_SYSTEM_DIR"/devel/.catkin # hack to allow overlaying to this ws while being empty
             ;;
         *)
-            echo -e "\e$build_tool is not supported (anymore), use catkin tools\e[0m"
+            echo -e "\e[31;1mError! ${build_tool} is not supported (anymore), use catkin tools\e[0m"
             return 1
             ;;
         esac
+    elif [[ "${CUCR_ROS_VERSION}" -eq 2 ]]
+    then
+        mkdir -p "$CUCR_SYSTEM_DIR"/src
+
+        # Disable symlink install for production
+        if [ "${CI_INSTALL}" == "true" ]
+        then
+            rm -rf "$CUCR_SYSTEM_DIR"/install
+            python3 -m colcon --log-base "$CUCR_SYSTEM_DIR"/log build --base-paths "$CUCR_SYSTEM_DIR"/src --build-base "$CUCR_SYSTEM_DIR"/build --install-base "$CUCR_SYSTEM_DIR"/install "$@"
+        else
+            python3 -m colcon --log-base "$CUCR_SYSTEM_DIR"/log build --merge-install --symlink-install --base-paths "$CUCR_SYSTEM_DIR"/src --build-base "$CUCR_SYSTEM_DIR"/build --install-base "$CUCR_SYSTEM_DIR"/install "$@"
+        fi
+        return $?
+    else
+        echo -e "\e[31;1mError! ROS_VERSION '${CUCR_ROS_VERSION}' is not supported by cucr-env.\e[0m"
+        return 1
     fi
 }
 export -f cucr-make
 
-function _cucr-make
+function cucr-make-test
 {
-    local cur=${COMP_WORDS[COMP_CWORD]}
+    [[ -z "${CUCR_ROS_DISTRO}" ]] && { echo -e "\e[31;1mError! cucr-env variable CUCR_ROS_DISTRO not set.\e[0m"; return 1; }
 
-    mapfile -t COMPREPLY < <(compgen -W "$(_list_subdirs "$CUCR_SYSTEM_DIR"/src)" -- "$cur")
-}
+    [[ -z "${CUCR_ROS_VERSION}" ]] && { echo -e "\e[31;1mError! CUCR_ROS_VERSION is not set.\nSet CUCR_ROS_VERSION before executing this function.\e[0m"; return 1; }
 
-complete -F _cucr-make cucr-make
+    [[ ! -d "${CUCR_SYSTEM_DIR}" ]] && { echo -e "\e[31;1mError! The workspace '${CUCR_SYSTEM_DIR}' does not exist. Run 'cucr-get install ros${CUCR_ROS_VERSION}' first.\e[0m"; return 1; }
 
-function cucr-make-dev
-{
-    if [ -n "$CUCR_ROS_DISTRO" ] && [ -d "$CUCR_DEV_DIR" ]
+    if [[ "${CUCR_ROS_VERSION}" -eq 1 ]]
     then
-        local build_tool=""
-        if [ -f "$CUCR_DEV_DIR"/devel/.built_by ]
+        local build_tool
+        build_tool=""
+        if [ -f "${CUCR_SYSTEM_DIR}"/build/.built_by ]
         then
-            build_tool=$(cat "$CUCR_DEV_DIR"/devel/.built_by)
+            build_tool=$(cat "${CUCR_SYSTEM_DIR}"/build/.built_by)
         fi
-        case $build_tool in
+        case ${build_tool} in
         'catkin build')
-            catkin build --workspace "$CUCR_DEV_DIR" "$@"
+            /usr/bin/python3 "$(command -v catkin)" test --workspace "${CUCR_SYSTEM_DIR}" "$@"
+            return $?
             ;;
         '')
-            catkin config --init --mkdirs --workspace "$CUCR_DEV_DIR" --extend "$CUCR_SYSTEM_DIR"/devel -DCMAKE_BUILD_TYPE=RelWithDebInfo
-            catkin build --workspace "$CUCR_DEV_DIR" "$@"
-            touch "$CUCR_DEV_DIR"/devel/.catkin # hack to allow overlaying to this ws while being empty
+            echo -e "\e[31;1mError! First initialize the workspace and build it, i.e. using cucr-make, before running tests\e[0m"
+            return 1
             ;;
         *)
-            echo -e "\e$build_tool is not supported (anymore), use catkin tools\e[0m"
+            echo -e "\e[31;1mError! ${build_tool} is not supported (anymore), use catkin tools\e[0m"
             return 1
             ;;
         esac
-    fi
-}
-export -f cucr-make-dev
-
-function _cucr-make-dev
-{
-    local cur=${COMP_WORDS[COMP_CWORD]}
-
-    mapfile -t COMPREPLY < <(compgen -W "$(_list_subdirs "$CUCR_DEV_DIR"/src)" -- "$cur")
-}
-complete -F _cucr-make-dev cucr-make-dev
-
-# ----------------------------------------------------------------------------------------------------
-#                                              CUCR-DEV
-# ----------------------------------------------------------------------------------------------------
-
-function cucr-dev
-{
-    if [ -z "$1" ]
+    elif [[ "${CUCR_ROS_VERSION}" -eq 2 ]]
     then
-        _list_subdirs "$CUCR_DEV_DIR"/src
-        return 0
-    fi
+        if [[ ! -d "${CUCR_SYSTEM_DIR}"/src ]]
+        then
+            echo -e "\e[31;1mError! No 'src' directory exists in the workspace '${CUCR_SYSTEM_DIR}'\e[0m"
+            return 1
+        fi
 
-    for pkg in "$@"
-    do
-        if [ ! -d "$CUCR_SYSTEM_DIR"/src/"$pkg" ]
+        if [[ ! -d "${CUCR_SYSTEM_DIR}"/build ]]
         then
-            echo "[cucr-dev] '$pkg' does not exist in the system workspace."
-        elif [ -d "$CUCR_DEV_DIR"/src/"$pkg" ]
+            echo -e "\e[31;1mError! No 'build' directory exists in the workspace '${CUCR_SYSTEM_DIR}'. Build the workspace before running tests\e[0m"
+            return 1
+        fi
+
+        # Disable symlink install for production
+        if [ "${CI_INSTALL}" == "true" ]
         then
-            echo "[cucr-dev] '$pkg' is already in the dev workspace."
+            python3 -m colcon --log-base "${CUCR_SYSTEM_DIR}"/log test --base-paths "${CUCR_SYSTEM_DIR}"/src --build-base "${CUCR_SYSTEM_DIR}"/build --install-base "${CUCR_SYSTEM_DIR}"/install --executor sequential --event-handlers console_cohesion+ "$@"
         else
-            ln -s "$CUCR_SYSTEM_DIR"/src/"$pkg" "$CUCR_DEV_DIR"/src/"$pkg"
+            python3 -m colcon --log-base "${CUCR_SYSTEM_DIR}"/log test --merge-install --base-paths "${CUCR_SYSTEM_DIR}"/src --build-base "${CUCR_SYSTEM_DIR}"/build --install-base "${CUCR_SYSTEM_DIR}"/install --executor sequential --event-handlers console_cohesion+ "$@"
         fi
-    done
-
-    # Call rospack such that the linked directories are indexed
-    rospack profile &> /dev/null
+        return $?
+    else
+        echo -e "\e[31;1mError! ROS_VERSION '${CUCR_ROS_VERSION}' is not supported by cucr-env.\e[0m"
+        return 1
+    fi
 }
+export -f cucr-make-test
 
-function cucr-dev-clean
+function cucr-make-test-result
 {
-    for f in $(_list_subdirs "$CUCR_DEV_DIR"/src)
-    do
-        # Test if f is a symbolic link
-        if [[ -L $CUCR_DEV_DIR/src/$f ]]
+    [[ -z "${CUCR_ROS_DISTRO}" ]] && { echo -e "\e[31;1mError! cucr-env variable CUCR_ROS_DISTRO not set.\e[0m"; return 1; }
+
+    [[ -z "${CUCR_ROS_VERSION}" ]] && { echo -e "\e[31;1mError! CUCR_ROS_VERSION is not set.\nSet CUCR_ROS_VERSION before executing this function.\e[0m"; return 1; }
+
+    [[ ! -d "${CUCR_SYSTEM_DIR}" ]] && { echo -e "\e[31;1mError! The workspace '${CUCR_SYSTEM_DIR}' does not exist. Run 'cucr-get install ros${CUCR_ROS_VERSION}' first.\e[0m"; return 1; }
+
+    if [[ "${CUCR_ROS_VERSION}" -eq 1 ]]
+    then
+        local build_tool
+        build_tool=""
+        if [ -f "$CUCR_SYSTEM_DIR"/build/.built_by ]
         then
-            echo "Cleaned '$f'"
-            rm "$CUCR_DEV_DIR"/src/"$f"
+            build_tool=$(cat "$CUCR_SYSTEM_DIR"/build/.built_by)
         fi
-    done
+        case $build_tool in
+        'catkin build')
+            python3 "$(command -v catkin)" test_results "${CUCR_SYSTEM_DIR}"/build "$@"
+            return $?
+            ;;
+        '')
+            echo -e "\e[31;1mError! First initialize the workspace and build it, i.e. using cucr-make, before running tests and checking the test results\e[0m"
+            return 1
+            ;;
+        *)
+            echo -e "\e[31;1mError! ${build_tool} is not supported (anymore), use catkin tools\e[0m"
+            return 1
+            ;;
+        esac
+    elif [[ "${CUCR_ROS_VERSION}" -eq 2 ]]
+    then
+        if [[ ! -d "${CUCR_SYSTEM_DIR}"/src ]]
+        then
+            echo -e "\e[31;1mError! No 'src' directory exists in the workspace '${CUCR_SYSTEM_DIR}'\e[0m"
+            return 1
+        fi
 
-    rm -rf "$CUCR_DEV_DIR"/devel/share
-    rm -rf "$CUCR_DEV_DIR"/devel/etc
-    rm -rf "$CUCR_DEV_DIR"/devel/include
-    rm -rf "$CUCR_DEV_DIR"/devel/lib
-    rm -rf "$CUCR_DEV_DIR"/build
+        if [[ ! -d "${CUCR_SYSTEM_DIR}"/build ]]
+        then
+            echo -e "\e[31;1mError! No 'build' directory exists in the workspace '${CUCR_SYSTEM_DIR}'. Build the workspace, run tests before checking test results\e[0m"
+            return 1
+        fi
+
+        python3 -m colcon --log-base "${CUCR_SYSTEM_DIR}"/log test-result --test-result-base "${CUCR_SYSTEM_DIR}"/build "$@"
+        return $?
+    else
+        echo -e "\e[31;1mError! ROS_VERSION '${CUCR_ROS_VERSION}' is not supported by cucr-env.\e[0m"
+        return 1
+    fi
 }
+export -f cucr-make-test-result
 
-function _cucr-dev
+function _cucr-make
 {
-    local cur=${COMP_WORDS[COMP_CWORD]}
+    local cur
+    cur=${COMP_WORDS[COMP_CWORD]}
 
-    mapfile -t COMPREPLY < <(compgen -W "$(_list_subdirs "$CUCR_SYSTEM_DIR"/src)" -- "$cur")
+    local options
+    [[ "${CUCR_ROS_VERSION}" -eq 2 ]] && options="${options} --packages-select"
+    mapfile -t COMPREPLY < <(compgen -W "$(_list_subdirs "${CUCR_SYSTEM_DIR}"/src) ${options}" -- "${cur}")
 }
-complete -F _cucr-dev cucr-dev
+
+complete -F _cucr-make cucr-make
+complete -F _cucr-make cucr-make-test
 
 # ----------------------------------------------------------------------------------------------------
 #                                             CUCR-STATUS
@@ -456,8 +601,8 @@ complete -F _cucr-dev cucr-dev
 
 function _robocup_branch_allowed
 {
-    local branch=$1
-    local robocup_branch
+    local branch robocup_branch
+    branch=$1
     robocup_branch=$(_cucr_get_robocup_branch)
     [ -n "$robocup_branch" ] && [ "$branch" == "$robocup_branch" ] && return 0
     # else
@@ -471,16 +616,16 @@ function _cucr_get_robocup_branch
 
 function _cucr-repo-status
 {
-    local name=$1
-    local pkg_dir=$2
+    local name pkg_dir
+    name=$1
+    pkg_dir=$2
 
     if [ ! -d "$pkg_dir" ]
     then
         return 1
     fi
 
-    local status=
-    local vctype=
+    local status vctype
 
     # Try git
     if git -C "$pkg_dir" rev-parse --git-dir > /dev/null 2>&1
@@ -500,7 +645,7 @@ function _cucr-repo-status
             local current_branch
             current_branch=$(git -C "$pkg_dir" rev-parse --abbrev-ref HEAD)
 
-            local test_branches=""
+            local test_branches
 
             # Add branch specified by target
             local target_branch version_cache_file
@@ -518,7 +663,8 @@ function _cucr-repo-status
             robocup_branch=$(_cucr_get_robocup_branch)
             [ -n "$robocup_branch" ] && test_branches="${test_branches:+${test_branches} }$robocup_branch"
 
-            local allowed="false"
+            local allowed
+            allowed="false"
             for test_branch in $test_branches
             do
                 if [ "$test_branch" == "$current_branch" ]
@@ -529,17 +675,9 @@ function _cucr-repo-status
                     break
                 fi
             done
-            [ "$allowed" != "true" ] && echo -e "\033[1m$name\033[0m is on branch '$current_branch'"
+            [ "$allowed" != "true" ] && echo -e "\e[1m$name\e[0m is on branch '$current_branch'"
         fi
         vctype=git
-    elif [ -d "$pkg_dir"/.svn ]
-    then
-        status=$(svn status "$pkg_dir")
-        vctype=svn
-    elif [ -d "$pkg_dir"/.hg ]
-    then
-        status=$(hg --cwd "$pkg_dir" status .)
-        vctype=hg
     else
         vctype=unknown
     fi
@@ -549,7 +687,7 @@ function _cucr-repo-status
         if [ -n "$status" ]
         then
             echo -e ""
-            echo -e "\033[38;5;1mM  \033[0m($vctype) \033[1m$name\033[0m"
+            echo -e "\e[38;1mM  \e[0m($vctype) \e[1m$name\e[0m"
             echo -e "--------------------------------------------------"
             echo -e "$status"
             echo -e "--------------------------------------------------"
@@ -567,6 +705,7 @@ function _cucr-dir-status
     fs=$(ls "$1")
     for f in $fs
     do
+        local pkg_dir
         pkg_dir=$1/$f
         _cucr-repo-status "$f" "$pkg_dir"
     done
@@ -587,12 +726,15 @@ function cucr-git-status
 {
     for pkg_dir in "$CUCR_SYSTEM_DIR"/src/*/
     do
+        local pkg
         pkg=$(basename "$pkg_dir")
 
+        local branch
         if branch=$(git -C "$pkg_dir" rev-parse --abbrev-ref HEAD 2>&1)
         then
+            local hash
             hash=$(git -C "$pkg_dir" rev-parse --short HEAD)
-            printf "\e[0;36m%-20s\033[0m %-15s %s\n" "$branch" "$hash" "$pkg"
+            printf "\e[0;36m%-20s\e[0m %-15s %s\n" "$branch" "$hash" "$pkg"
         fi
     done
 }
@@ -603,28 +745,34 @@ function cucr-git-status
 
 function cucr-revert
 {
+    local human_time
     human_time="$*"
 
     for pkg_dir in "$CUCR_SYSTEM_DIR"/src/*/
     do
+        local pkg
         pkg=$(basename "$pkg_dir")
 
+        local branch
         branch=$(git -C "$pkg_dir" rev-parse --abbrev-ref HEAD 2>&1)
         if branch=$(git -C "$pkg_dir" rev-parse --abbrev-ref HEAD 2>&1) && [ "$branch" != "HEAD" ]
         then
+            local new_hash current_hash
             new_hash=$(git -C "$pkg_dir"  rev-list -1 --before="$human_time" "$branch")
             current_hash=$(git -C "$pkg_dir"  rev-parse HEAD)
 
+            local newtime
             if git -C "$pkg_dir"  diff -s --exit-code "$new_hash" "$current_hash"
             then
                 newtime=$(git -C "$pkg_dir"  show -s --format=%ci)
-                printf "\e[0;36m%-20s\033[0m %-15s \e[1m%s\033[0m %s\n" "$branch is fine" "$new_hash" "$newtime" "$pkg"
+                printf "\e[0;36m%-20s\e[0m %-15s \e[1m%s\e[0m %s\n" "$branch is fine" "$new_hash" "$newtime" "$pkg"
             else
-                git -C "$pkg_dir"  checkout -q "$new_hash"
+                local newbranch
+                git -C "$pkg_dir"  checkout -q "$new_hash" --
                 newbranch=$(git -C "$pkg_dir"  rev-parse --abbrev-ref HEAD 2>&1)
                 newtime=$(git -C "$pkg_dir"  show -s --format=%ci)
                 echo "$branch" > "$pkg_dir/.do_not_commit_this"
-                printf "\e[0;36m%-20s\033[0m %-15s \e[1m%s\033[0m %s\n" "$newbranch based on $branch" "$new_hash" "$newtime" "$pkg"
+                printf "\e[0;36m%-20s\e[0m %-15s \e[1m%s\e[0m %s\n" "$newbranch based on $branch" "$new_hash" "$newtime" "$pkg"
             fi
         else
             echo "Package $pkg could not be reverted, current state: $branch"
@@ -640,12 +788,13 @@ function cucr-revert-undo
 {
     for pkg_dir in "$CUCR_SYSTEM_DIR"/src/*/
     do
+        local pkg
         pkg=$(basename "$pkg_dir")
 
         if [ -f "$pkg_dir/.do_not_commit_this" ]
         then
             echo "$pkg"
-            git -C "$pkg_dir" checkout "$(cat "$pkg_dir"/.do_not_commit_this)"
+            git -C "$pkg_dir" checkout "$(cat "$pkg_dir"/.do_not_commit_this)" --
             rm "$pkg_dir/.do_not_commit_this"
         fi
     done
@@ -660,7 +809,7 @@ function _cucr_show_file
 {
     if [ -n "$2" ]
     then
-        echo -e "\033[1m[$1] $2\033[0m"
+        echo -e "\e[1m[$1] $2\e[0m"
         echo "--------------------------------------------------"
         if hash pygmentize 2> /dev/null
         then
@@ -675,57 +824,9 @@ function _cucr_show_file
     fi
 }
 
-function __cucr_cucr_generate_setup_file
-{
-    # Check whether this target was already added to the setup
-    if [[ "$CUCR_SETUP_TARGETS" == *" $1 "* ]];
-    then
-        return 0
-    fi
-
-    CUCR_SETUP_TARGETS=" $1$CUCR_SETUP_TARGETS"
-
-    # Check if the dependency file exists. If not, return
-    if [ ! -f "$cucr_dependencies_dir"/"$1" ]
-    then
-        return 0
-    fi
-
-    # Recursively add a setup for each dependency
-    deps=$(cat "$cucr_dependencies_dir"/"$1")
-    for dep in $deps
-    do
-        # You shouldn't depend on yourself
-        if [ "$1" != "$dep" ]
-        then
-            __cucr_cucr_generate_setup_file "$dep"
-        fi
-    done
-
-    local cucr_setup_file=$CUCR_ENV_TARGETS_DIR/$1/setup
-    if [ -f "$cucr_setup_file" ]
-    then
-        echo "source $cucr_setup_file" >> "$CUCR_ENV_DIR"/.env/setup/target_setup.bash
-    fi
-}
-
 function _cucr_generate_setup_file
 {
-    mkdir -p "$CUCR_ENV_DIR"/.env/setup
-    echo "# This file was auto-generated by cucr-get. Do not change this file." > "$CUCR_ENV_DIR"/.env/setup/target_setup.bash
-
-    local cucr_dependencies_dir="$CUCR_ENV_DIR"/.env/dependencies
-
-    if [ -d "$cucr_dependencies_dir" ]
-    then
-        local installed_targets
-        installed_targets=$(ls "$CUCR_ENV_DIR"/.env/installed)
-        local CUCR_SETUP_TARGETS=" "
-        for t in $installed_targets
-        do
-            __cucr_cucr_generate_setup_file "$t"
-        done
-    fi
+    "$CUCR_DIR"/setup/generate_setup_file_cucr.py || echo "Error during generation of the 'target_setup.bash'"
 }
 
 function _cucr_remove_recursively
@@ -737,10 +838,11 @@ function _cucr_remove_recursively
         return 1
     fi
 
-    local target=$1
-    local cucr_dependencies_dir="$CUCR_ENV_DIR"/.env/dependencies
-    local cucr_dependencies_on_dir="$CUCR_ENV_DIR"/.env/dependencies-on
-    local error_code=0
+    local target cucr_dependencies_dir cucr_dependencies_on_dir error_code
+    target=$1
+    cucr_dependencies_dir="$CUCR_ENV_DIR"/.env/dependencies
+    cucr_dependencies_on_dir="$CUCR_ENV_DIR"/.env/dependencies-on
+    error_code=0
 
     # If packages depend on the target to be removed, just remove the installed status.
     if [ -f "$cucr_dependencies_on_dir"/"$target" ]
@@ -764,8 +866,9 @@ function _cucr_remove_recursively
         while read -r dep
         do
             # Target is removed, so remove yourself from depend-on files of deps
-            local dep_dep_on_file="$cucr_dependencies_on_dir"/"$dep"
-            local tmp_file=/tmp/temp_depend_on
+            local dep_dep_on_file tmp_file
+            dep_dep_on_file="$cucr_dependencies_on_dir"/"$dep"
+            tmp_file=/tmp/temp_depend_on
             if [ -f "$dep_dep_on_file" ]
             then
                 while read -r line
@@ -817,29 +920,36 @@ function cucr-get
         show             - Show the contents of (a) package(s)
 
     Possible options:
-        --debug          - Shows more debugging information
-        --no-ros-deps    - Do not install ROS dependencies (Breaks the dependency tree, not all setup files will be sourced)
-        --doc-depend     - Do install doc dependencies, overules config and --no-ros-deps
-        --no-doc-depend  - Do not install doc dependencies, overules config
-        --test-depend    - Do install test dependencies, overules config and --no-ros-deps
-        --no-test-depend - Do not install test dependencies, overules config
-        --branch=name    - Try to checkout this branch if exists
+        --debug           - Shows more debugging information
+        --no-ros-deps     - Do not install ROS dependencies (Breaks the dependency tree, not all setup files will be sourced)
+        --doc-depend      - Do install doc dependencies, overules config and --no-ros-deps
+        --no-doc-depend   - Do not install doc dependencies, overules config
+        --test-depend     - Do install test dependencies, overules config and --no-ros-deps
+        --no-test-depend  - Do not install test dependencies, overules config
+        --try-branch=name - Try to checkout the branch (or tag) 'name'. This argument can be specified multiple times
+                            and all the --try-branch arguments are processed in the reverse order of their declaration,
+                            with the last one being the first. 'name' must only be an one word value, not a list or any
+                            other type of string.
 
 """
         return 1
     fi
 
-    local cucr_dep_dir=$CUCR_ENV_DIR/.env/dependencies
-    local cucr_installed_dir=$CUCR_ENV_DIR/.env/installed
+    local cucr_dep_dir cucr_installed_dir
+    cucr_dep_dir=$CUCR_ENV_DIR/.env/dependencies
+    cucr_installed_dir=$CUCR_ENV_DIR/.env/installed
 
-    local error_code=0
+    local error_code
+    error_code=0
 
-    local cmd=$1
+    local cmd
+    cmd=$1
     shift
 
     #Create btrfs snapshot if possible and usefull:
-    if [[ "$cmd" =~ ^(install|update|remove)$ ]] && { df --print-type / | grep -q btrfs; }
+    if [[ -n "$BTRFS_SNAPSHOT" && "$cmd" =~ ^(install|update|remove)$ ]] && { df --print-type / | grep -q btrfs; }
     then
+        echo "[cucr-get] Creating btrfs snapshot"
         sudo mkdir -p /snap/root
         sudo btrfs subvolume snapshot / /snap/root/"$(date +%Y-%m-%d_%H:%M:%S)"
     fi
@@ -874,7 +984,7 @@ function cucr-get
             if [ $error_code -eq 0 ]
             then
                 _cucr_generate_setup_file
-                # shellcheck disable=SC1090
+                # shellcheck disable=SC1091
                 source "$CUCR_DIR"/setup.bash
             fi
         fi
@@ -882,7 +992,7 @@ function cucr-get
         return $error_code
     elif [[ $cmd == "remove" ]]
     then
-        local targets_to_remove=""
+        local targets_to_remove
         for target in "$@"
         do
             local resolved_targets
@@ -913,7 +1023,8 @@ function cucr-get
         touch /tmp/cucr_get_remove_lock
         for target in $targets_to_remove
         do
-            local target_error=0
+            local target_error
+            target_error=0
             _cucr_remove_recursively "$target"
             target_error=$?
             if [ $target_error -gt 0 ]
@@ -956,7 +1067,8 @@ function cucr-get
             echo "[cucr-get](show) Provide at least one target name"
             return 1
         fi
-        local firsttarget=true
+        local firsttarget
+        firsttarget=true
         for target in "$@"
         do
             if [[ $firsttarget == false ]]
@@ -970,12 +1082,14 @@ function cucr-get
                 continue
             fi
 
-            local firstfile="true"
-            local files
+            local firstfile
+            local -a files
+            firstfile=true
             mapfile -t files < <(find "$CUCR_ENV_TARGETS_DIR"/"$target" -type f)
 
             # First show the common target files
-            local main_target_files="install.yaml install.bash setup"
+            local main_target_files
+            main_target_files="install.yaml install.bash setup"
             for file in $main_target_files
             do
                 for key in "${!files[@]}"
@@ -1002,7 +1116,7 @@ function cucr-get
                 then
                     echo ""
                 fi
-                _cucr_show_file "$target" "${file#*$CUCR_ENV_TARGETS_DIR"/"$target/}"
+                _cucr_show_file "$target" "${file#*"${CUCR_ENV_TARGETS_DIR}/${target}/"}"
                 firstfile=false
             done
             firsttarget=false
@@ -1019,39 +1133,47 @@ function cucr-get
 
 function _cucr-get
 {
-    local cur=${COMP_WORDS[COMP_CWORD]}
+    local cur
+    cur=${COMP_WORDS[COMP_CWORD]}
 
     if [ "$COMP_CWORD" -eq 1 ]
     then
-        local IFS=$'\n'
+        local IFS options
+        IFS=$'\n'
         options="'dep '\n'install '\n'update '\n'remove '\n'list-installed '\n'show '"
         # shellcheck disable=SC2178
         mapfile -t COMPREPLY < <(compgen -W "$(echo -e "$options")" -- "$cur")
     else
+        local cmd
         cmd=${COMP_WORDS[1]}
         if [[ $cmd == "install" ]]
         then
-            local IFS=$'\n'
+            local IFS
+            IFS=$'\n'
             # shellcheck disable=SC2178
-            mapfile -t COMPREPLY < <(compgen -W "$(echo -e "$(find "$CUCR_ENV_TARGETS_DIR" -mindepth 1 -maxdepth 1 -type d -not -name ".*" -printf "%f\n" | sed "s/.*/'& '/g")\n'--debug '\n'--no-ros-deps '\n'--doc-depend '\n'--no-doc-depend '\n'--test-depend '\n'--no-test-depend '\n'--branch='")" -- "$cur")
+            mapfile -t COMPREPLY < <(compgen -W "$(echo -e "$(find "$CUCR_ENV_TARGETS_DIR" -mindepth 1 -maxdepth 1 -type d -not -name ".*" -printf "%f\n" | sed "s/.*/'& '/g")\n'--debug '\n'--no-ros-deps '\n'--doc-depend '\n'--no-doc-depend '\n'--test-depend '\n'--no-test-depend '\n'--try-branch='")" -- "$cur")
         elif [[ $cmd == "dep" ]]
         then
-            local IFS=$'\n'
+            local IFS
+            IFS=$'\n'
             # shellcheck disable=SC2178
             mapfile -t COMPREPLY < <(compgen -W "$(echo -e "$(find "$CUCR_ENV_DIR"/.env/dependencies -mindepth 1 -maxdepth 1 -type f -not -name ".*" -printf "%f\n" | sed "s/.*/'& '/g")\n'--plain '\n'--verbose '\n'--ros-only '\n'--all '\n'--level='")" -- "$cur")
         elif [[ $cmd == "update" ]]
         then
-            local IFS=$'\n'
+            local IFS
+            IFS=$'\n'
             # shellcheck disable=SC2178
-            mapfile -t COMPREPLY < <(compgen -W "$(echo -e "$(find "$CUCR_ENV_DIR"/.env/dependencies -mindepth 1 -maxdepth 1 -type f -not -name ".*" -printf "%f\n" | sed "s/.*/'& '/g")\n'--debug '\n'--no-ros-deps '\n'--doc-depend '\n'--no-doc-depend '\n'--test-depend '\n'--no-test-depend '\n'--branch='")" -- "$cur")
+            mapfile -t COMPREPLY < <(compgen -W "$(echo -e "$(find "$CUCR_ENV_DIR"/.env/dependencies -mindepth 1 -maxdepth 1 -type f -not -name ".*" -printf "%f\n" | sed "s/.*/'& '/g")\n'--debug '\n'--no-ros-deps '\n'--doc-depend '\n'--no-doc-depend '\n'--test-depend '\n'--no-test-depend '\n'--try-branch='")" -- "$cur")
         elif [[ $cmd == "remove" ]]
         then
-            local IFS=$'\n'
+            local IFS
+            IFS=$'\n'
             # shellcheck disable=SC2178
             mapfile -t COMPREPLY < <(compgen -W "$(find "$CUCR_ENV_DIR"/.env/installed -mindepth 1 -maxdepth 1 -type f -not -name ".*" -printf "%f\n" | sed "s/.*/'& '/g")" -- "$cur")
         elif [[ $cmd == "show" ]]
         then
-            local IFS=$'\n'
+            local IFS
+            IFS=$'\n'
             # shellcheck disable=SC2178
             mapfile -t COMPREPLY < <(compgen -W "$(find "$CUCR_ENV_TARGETS_DIR" -mindepth 1 -maxdepth 1 -type d -not -name ".*" -printf "%f\n" | sed "s/.*/'& '/g")" -- "$cur")
         else
@@ -1082,14 +1204,15 @@ function cucr-checkout
         return 1
     fi
 
+    local NO_CUCR_ENV branch
     while test $# -gt 0
     do
         case "$1" in
-            --only-pkgs) local NO_CUCR_ENV="true"
+            --only-pkgs) NO_CUCR_ENV="true"
             ;;
             --*) echo "unknown option $1"; exit 1;
             ;;
-            *) local branch=$1
+            *) branch=$1
             ;;
         esac
         shift
@@ -1102,7 +1225,8 @@ function cucr-checkout
     fi
     for pkg_dir in $fs
     do
-        pkg=${pkg_dir#$CUCR_SYSTEM_DIR/src/}
+        local pkg
+        pkg=${pkg_dir#"${CUCR_SYSTEM_DIR}/src/"}
         if [ -z "$NO_CUCR_ENV" ]
         then
             if [[ $pkg =~ .cucr ]]
@@ -1116,16 +1240,16 @@ function cucr-checkout
 
         if [ -d "$pkg_dir" ]
         then
-            if git -C "$pkg_dir" rev-parse --quiet --verify origin/"$branch" 1>/dev/null
+            if git -C "$pkg_dir" rev-parse --quiet --verify origin/"$branch" &>/dev/null
             then
                 local current_branch
                 current_branch=$(git -C "$pkg_dir" rev-parse --abbrev-ref HEAD)
                 if [[ "$current_branch" == "$branch" ]]
                 then
-                    echo -e "\033[1m$pkg\033[0m: Already on branch $branch"
+                    echo -e "\e[1m$pkg\e[0m: Already on branch $branch"
                 else
                     local res _checkout_res _checkout_return _submodule_res _submodule_return
-                    _checkout_res=$(git -C "$pkg_dir" checkout "$branch" 2>&1)
+                    _checkout_res=$(git -C "$pkg_dir" checkout "$branch" -- 2>&1)
                     _checkout_return=$?
                     [ -n "$_checkout_res" ] && res="${res:+${res} }$_checkout_res"
                     _submodule_res=$(git -C "$pkg_dir" submodule update --init --recursive 2>&1)
@@ -1135,12 +1259,12 @@ function cucr-checkout
 
                     if [ "$_checkout_return" == 0 ] && [ -z "$_submodule_res" ]
                     then
-                        echo -e "\033[1m$pkg\033[0m: checked-out $branch"
+                        echo -e "\e[1m$pkg\e[0m: checked-out $branch"
                     else
                         echo ""
-                        echo -e "    \033[1m$pkg\033[0m"
+                        echo -e "    \e[1m$pkg\e[0m"
                         echo "--------------------------------------------------"
-                        echo -e "\033[38;5;1m$res\033[0m"
+                        echo -e "\e[38;1m$res\e[0m"
                         echo "--------------------------------------------------"
                     fi
                 fi
@@ -1150,10 +1274,138 @@ function cucr-checkout
 }
 
 # ----------------------------------------------------------------------------------------------------
+#                                             CUCR-DEB FUNCTIONS
+# ----------------------------------------------------------------------------------------------------
+
+function cucr-deb-generate
+{
+    [[ -z "${CUCR_ROS_DISTRO}" ]] && { echo -e "\e[31;1mError! cucr-env variable CUCR_ROS_DISTRO not set.\e[0m"; return 1; }
+
+    [[ -z "${CUCR_ROS_VERSION}" ]] && { echo -e "\e[31;1mError! CUCR_ROS_VERSION is not set.\nSet CUCR_ROS_VERSION before executing this function.\e[0m"; return 1; }
+
+    [[ ! -d "${CUCR_SYSTEM_DIR}" ]] && { echo -e "\e[31;1mError! The workspace '${CUCR_SYSTEM_DIR}' does not exist. Run 'cucr-get install ros${CUCR_ROS_VERSION}' first.\e[0m"; return 1; }
+
+    [[ "${CUCR_ROS_VERSION}" -ne 2 ]] && { echo -e "\e[31;1mError! This command is supported only with CUCR_ROS_VERSION=2.\e[0m"; return 1; }
+
+    local packages_list
+    if [[ -z "${1}" ]]
+    then
+        echo -e "\e[33;1mNo packages specified, so packaging the entire workspace. \e[0m"
+        for pkg_path in "${CUCR_SYSTEM_DIR}"/src/*
+        do
+            pkg="$(basename "${pkg_path}")"
+            packages_list="${pkg} ${packages_list}"
+        done
+
+        if [[ -z "${packages_list}" ]]
+        then
+            echo -e "\e[31;1mError! No source packages found in workspace to package.\e[0m"
+            return 1
+        fi
+    else
+        packages_list="$*"
+    fi
+
+    # Check if packages are built
+    local PACKAGES_NOT_BUILT
+    for package in $packages_list
+    do
+        if [[ ! -d "${CUCR_SYSTEM_DIR}"/install/"${package}" ]]
+        then
+            PACKAGES_NOT_BUILT="${PACKAGES_NOT_BUILT} ${package}"
+        fi
+    done
+
+    if [[ -n "${PACKAGES_NOT_BUILT}" ]]
+    then
+        echo -e "\e[31;1mThe following packages are not built:\e[0m${PACKAGES_NOT_BUILT}\e[31;1m. Hence cannot be packaged.\e[0m"
+        return 1
+    fi
+
+    local cur_dir
+    cur=${PWD}
+
+    local timestamp
+    timestamp="$(date +%Y%m%d%H%M%S)"
+
+    mkdir -p "${CUCR_RELEASE_DIR}"
+    cd "${CUCR_RELEASE_DIR}" || return 1
+
+    for package in $packages_list
+    do
+        local pkg_rel_dir
+        pkg_rel_dir="$("${CUCR_DIR}"/installer/generate_deb_control.py "${CUCR_RELEASE_DIR}" "${CUCR_SYSTEM_DIR}"/src/"${package}"/package.xml "${timestamp}")"
+
+
+        if [[ ! -d "${pkg_rel_dir}" ]]
+        then
+            echo -e "\e[31;1mError! Expected release dir for package '${package}' not created.\e[0m"
+            cd "${cur_dir}" || return 1
+            return 1
+        fi
+
+        mkdir -p "${pkg_rel_dir}"/opt/ros/"${CUCR_ROS_DISTRO}"
+        cp -r "${CUCR_SYSTEM_DIR}"/install/"${package}"/* "${pkg_rel_dir}"/opt/ros/"${CUCR_ROS_DISTRO}"/
+
+        dpkg-deb --build --root-owner-group "${pkg_rel_dir}"
+        rm -rf "${pkg_rel_dir}"
+    done
+
+    cd "${cur_dir}" || return
+}
+export -f cucr-deb-generate
+
+function cucr-deb-gitlab-release
+{
+    echo -e "\e[32;1mReleasing debian files to GitLab package registry\e[0m"
+
+    local REGISTRY_URL TOKEN
+
+    for i in "$@"
+    do
+        case $i in
+            --registry-url=* )
+                REGISTRY_URL="${i#*=}"
+                ;;
+
+            --token=* )
+                TOKEN="${i#*=}"
+                ;;
+
+            * )
+                echo -e "\e[31;1mError! Unknown argument ${i}."
+                return 1
+                ;;
+        esac
+    done
+
+    if [[ -z "${REGISTRY_URL}" ]] || [[ -z "${TOKEN}" ]]
+    then
+        echo -e "\e[31;1mError! Mandatory arguments --registry-url and --token not specified"
+        return 1
+    fi
+
+    for deb in "${CUCR_RELEASE_DIR}"/*
+    do
+        local deb_pkg pkgwithversion pkg version
+        deb_pkg="$(basename "${deb}")"
+        pkgwithversion="${deb_pkg%%-build*}"
+        pkg="${pkgwithversion%%_*}"
+        version="${pkgwithversion##*_}"
+
+        PACKAGE_URL=${REGISTRY_URL}/${pkg}/${version}/${deb_pkg}
+        echo -e "\e[35;1mPACKAGE_URL=${PACKAGE_URL}\e[0m"
+
+        curl --header "JOB-TOKEN: ${TOKEN}" --upload-file "${deb}" "${PACKAGE_URL}"
+    done
+}
+export -f cucr-deb-gitlab-release
+
+# ----------------------------------------------------------------------------------------------------
 #                                              CUCR-DATA
 # ----------------------------------------------------------------------------------------------------
 
-# shellcheck disable=SC1090
+# shellcheck disable=SC1091
 source "$CUCR_DIR"/setup/cucr-data.bash
 
 # ----------------------------------------------------------------------------------------------------
@@ -1168,40 +1420,53 @@ function _cucr-repos-do
     # The input can be multiple arguments, but if the input consists of multiple commands
     # seperated by ';' or '&&' the input needs to be captured in a string.
 
-    local mem_pwd=$PWD
+    local mem_pwd
+    mem_pwd=${PWD}
+    local -a cmd_array
+    cmd_array=("$@")
+
+    local repos_dirs
+    if [[ -n ${CUCR_REPOS_DO_DIRS} ]]
+    then
+        repos_dirs=${CUCR_REPOS_DO_DIRS}
+    else
+        repos_dirs=${CUCR_REPOS_DIR}/github.com/cucr-robotics
+        echo -e "No 'CUCR_REPOS_DO_DIRS' set, using: \e[1m${repos_dirs}\e[0m"
+    fi
 
     { [ -n "$CUCR_DIR" ] && cd "$CUCR_DIR"; } || { echo -e "CUCR_DIR '$CUCR_DIR' does not exist"; return 1; }
-    echo -e "\033[1m[cucr-env]\033[0m"
-    eval "$@"
+    echo -e "\e[1m[cucr-env]\e[0m"
+    eval "${cmd_array[*]}"
 
     { [ -n "$CUCR_ENV_TARGETS_DIR" ] && cd "$CUCR_ENV_TARGETS_DIR"; } || { echo -e "CUCR_ENV_TARGETS_DIR '$CUCR_ENV_TARGETS_DIR' does not exist"; return 1; }
-    echo -e "\033[1m[cucr-env-targets]\033[0m"
-    eval "$@"
+    echo -e "\e[1m[cucr-env-targets]\e[0m"
+    eval "${cmd_array[*]}"
 
-    local repos_dir=$CUCR_ENV_DIR/repos/github.com/cucr-robotics
-
-    local fs
-    fs=$(ls "$repos_dir")
-    for repo in $fs
+    for repos_dir in $(echo "${repos_dirs}" | tr ':' '\n')
     do
-        local repo_dir=$repos_dir/$repo
-
-        if [ -d "$repo_dir" ]
-        then
-            cd "$repo_dir" || { echo -e "Directory '$CUCR_ENV_TARGETS_DIR' does not exist"; return 1; }
-            echo -e "\033[1m[${repo%.git}]\033[0m"
-            eval "$@"
-        fi
+        for repo_dir in $(find "$(realpath --no-symlinks "${repos_dir}")" -name '.git' -type d -prune -print0 | xargs -0 dirname)
+        do
+            local repo
+            repo=$(realpath --relative-to="${repos_dir}" "${repo_dir}")
+            if [[ ${repo} == "." ]]
+            then
+                repo=$(basename "${repo_dir}")
+            fi
+            cd "${repo_dir}" || { echo -e "Directory '${repo_dir}' does not exist"; return 1; }
+            echo -e "\e[1m[${repo%.git}]\e[0m"
+            eval "${cmd_array[*]}"
+        done
     done
 
     # shellcheck disable=SC2164
-    cd "$mem_pwd"
+    cd "${mem_pwd}"
 }
 
 function _cucr-add-git-remote
 {
-    local remote=$1
-    local server=$2
+    local remote server
+    remote=$1
+    server=$2
 
     if [ -z "$2" ]
     then
@@ -1216,16 +1481,16 @@ For example:
 
     if [ "$remote" == "origin" ]
     then
-        echo -e "\033[1mYou are not allowed to change the remote: 'origin'\033[0m"
+        echo -e "\e[1mYou are not allowed to change the remote: 'origin'\e[0m"
         return 1
     fi
 
     local output
     output="$(_git_split_url "$(git config --get remote.origin.url)")"
-    local array
+    local array repo_address url_extension
     read -r -a array <<< "$output"
-    local repo_address=${array[1]}
-    local url_extension="$repo_address.git"
+    repo_address=${array[1]}
+    url_extension="$repo_address.git"
 
     if [[ "$(git remote)" == *"$remote"* ]]
     then
@@ -1261,12 +1526,13 @@ For example:
         return 1
     fi
 
-    local remote=$1
-    local server=$2
+    local remote server
+    remote=$1
+    server=$2
 
     if [ "$remote" == "origin" ]
     then
-        echo -e "\033[1mYou are not allowed to change the remote: 'origin'\033[0m"
+        echo -e "\e[1mYou are not allowed to change the remote: 'origin'\e[0m"
         return 1
     fi
 
@@ -1275,7 +1541,8 @@ For example:
 
 function __cucr-remove-git-remote
 {
-    local remote=$1
+    local remote
+    remote=$1
 
     if [ -z "$1" ]
     then
@@ -1290,7 +1557,7 @@ For example:
 
     if [ "$remote" == "origin" ]
     then
-        echo -e "\033[1mYou are not allowed to remove the remote: 'origin'\033[0m"
+        echo -e "\e[1mYou are not allowed to remove the remote: 'origin'\e[0m"
         return 1
     fi
 
@@ -1317,11 +1584,12 @@ For example:
         return 1
     fi
 
-    local remote=$1
+    local remote
+    remote=$1
 
     if [ "$remote" == "origin" ]
     then
-        echo -e "\033[1mYou are not allowed to remove the remote: 'origin'\033[0m"
+        echo -e "\e[1mYou are not allowed to remove the remote: 'origin'\e[0m"
         return 1
     fi
 
@@ -1332,7 +1600,7 @@ function _git_remote_checkout
 {
     if [ -z "$2" ]
     then
-        echo "Usage: _git_remote_checkout REMOTE BRANCH
+        echo "Usage: _git_remote_checkout [REPO_PATH] REMOTE BRANCH
 
 For example:
 
@@ -1341,18 +1609,25 @@ For example:
         return 1
     fi
 
-    local remote=$1
-    local branch=$2
-    local exists
-    exists=$(git show-ref refs/heads/"$branch")
+    local repo_path remote branch exists
+    if [ -n "$3" ]
+    then
+        repo_path=$1
+        shift
+    fi
+    remote=$1
+    branch=$2
+    exists=$(git -C "${repo_path}" show-ref refs/heads/"${branch}" 2>/dev/null)
     if [ -n "$exists" ]
     then
-        git checkout "$branch"
-        git branch -u "$remote"/"$branch" "$branch"
+        git -C "${repo_path}" checkout "${branch}" --
+        git -C "${repo_path}" branch -u "${remote}"/"${branch}" "${branch}"
     else
-        git checkout --track -b "$branch" "$remote"/"$branch"
+        git -C "${repo_path}" checkout --track -b "${branch}" "${remote}"/"${branch}" --
     fi
 }
+
+export -f _git_remote_checkout
 
 function cucr-remote-checkout
 {
@@ -1367,8 +1642,9 @@ For example:
         return 1
     fi
 
-    local remote=$1
-    local branch=$2
+    local remote branch
+    remote=$1
+    branch=$2
 
     _cucr-repos-do "git fetch $remote; _git_remote_checkout $remote $branch"
 }
@@ -1386,8 +1662,9 @@ For example:
         return 1
     fi
 
-    local remote=$1
-    local branch=$2
+    local remote branch
+    remote=$1
+    branch=$2
 
     git fetch "$remote"
     local current_remote
@@ -1403,8 +1680,9 @@ function cucr-robocup-remote-checkout
     # same functionality as cucr-remote-checkout, but no arguments needed
     # doesn't perform a checkout, when current branch is already setup
     # to the roboticssrv
-    local remote="roboticssrv"
-    local branch=$CUCR_ROBOCUP_BRANCH
+    local remote branch
+    remote="roboticssrv"
+    branch=$CUCR_ROBOCUP_BRANCH
 
     _cucr-repos-do "_cucr-robocup-remote-checkout $remote $branch"
 }
@@ -1422,8 +1700,9 @@ For example:
         return 1
     fi
 
-    local branch=$1
-    local remote=$2
+    local branch remote
+    branch=$1
+    remote=$2
 
     if [ -n "$(git show-ref refs/heads/"$branch")" ]
     then
@@ -1464,8 +1743,9 @@ For example:
         return 1
     fi
 
-    local branch=$1
-    local remote=$2
+    local branch remote
+    branch=$1
+    remote=$2
 
     _cucr-repos-do "_cucr-robocup-change-remote $branch $remote"
 }
@@ -1509,7 +1789,7 @@ function cucr-robocup-set-roboticssrv
 
 function cucr-robocup-set-timezone-robocup
 {
-    sudo timedatectl set-timezone Australia/Sydney
+    sudo timedatectl set-timezone Europe/Amsterdam
 }
 
 function cucr-robocup-set-timezone-home
@@ -1529,14 +1809,17 @@ function _ping_bool
 
 function cucr-robocup-install-package
 {
-    local repos_dir=$CUCR_ENV_DIR/repos/github.com/cucr-robotics
-    local repo_dir=$repos_dir/${1}.git
+    local repos_dir repo_dir
+    repos_dir=$CUCR_ENV_DIR/github.com/cucr-robotics
+    repo_dir=$repos_dir/${1}.git
 
-    local mem_pwd=$PWD
+    local mem_pwd
+    mem_pwd=${PWD}
 
-    local remote="roboticssrv"
-    local server="amigo@roboticssrv.local:"
-    local branch=$CUCR_ROBOCUP_BRANCH
+    local remote server branch
+    remote="roboticssrv"
+    server="amigo@roboticssrv.local:"
+    branch=$CUCR_ROBOCUP_BRANCH
 
     # If directory already exists, return
     [ -d "$repo_dir" ] && return 0
@@ -1565,7 +1848,8 @@ function cucr-robocup-install-package
         fs=$(find . -mindepth 1 -maxdepth 1 -type d -not -name ".*" -printf "%f\n")
         for pkg in $fs
         do
-            local pkg_dir=$repo_dir/$pkg
+            local pkg_dir
+            pkg_dir=$repo_dir/$pkg
             if [ -f "$pkg_dir/package.xml" ]
             then
                 if [ ! -h "$CUCR_ENV_DIR"/system/src/"$pkg" ]
@@ -1582,11 +1866,12 @@ function cucr-robocup-install-package
 
 function cucr-robocup-update
 {
-    _cucr-repos-do "git pull --ff-only"
+    _cucr-repos-do "git pull --rebase --autostash"
 
     # Copy rsettings file
     if [ "$ROBOT_REAL" != "true" ]
     then
+        local rsettings_file
         rsettings_file=$CUCR_ENV_TARGETS_DIR/cucr-common/rsettings_file
         if [ -f "$rsettings_file" ]
         then
