@@ -450,7 +450,7 @@ function cucr-install-git
     repo_pre="$repo"
 
     # Change url to https/ssh
-    repo=$(_git_https_or_ssh "$repo")
+    repo=$(_cucr_git_https_or_ssh "$repo")
     if [[ -z "${repo}" ]]
     then
         # shellcheck disable=SC2140
