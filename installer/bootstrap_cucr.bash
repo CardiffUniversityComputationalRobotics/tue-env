@@ -217,11 +217,11 @@ function main
 
     # Add loading of TU/e tools (cucr-env, cucr-get, etc) to bashrc
     # shellcheck disable=SC2088
-    if ! grep -q "${env_dir}/setup.bash" ~/.bashrc;
+    if ! grep -q "${env_dir}/setup_cucr.bash" ~/.bashrc;
     then
         echo "
 # Load CUCR (from TU/e) tools
-source ${env_dir}/setup.bash" >> ~/.bashrc
+source ${env_dir}/setup_cucr.bash" >> ~/.bashrc
     fi
 
     # Set this environment as default
@@ -229,7 +229,7 @@ source ${env_dir}/setup.bash" >> ~/.bashrc
 
     # Activate the default environment
     # shellcheck disable=SC1090
-    source "${env_dir}"/setup.bash
+    source "${env_dir}"/setup_cucr.bash
 }
 
 main "$@" || echo "[cucr-env](bootstrap) Error! Could not install cucr-env."
