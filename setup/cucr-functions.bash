@@ -985,7 +985,7 @@ function cucr-get
             then
                 _cucr_generate_setup_file
                 # shellcheck disable=SC1091
-                source "$CUCR_DIR"/setup.bash
+                source "$CUCR_DIR"/setup_cucr.bash
             fi
         fi
 

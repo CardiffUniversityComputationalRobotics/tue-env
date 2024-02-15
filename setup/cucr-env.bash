@@ -195,7 +195,7 @@ Environment directory '${dir}' didn't exist (anymore)"""
         export CUCR_ENV_DIR
 
         # shellcheck disable=SC1090
-        source "$CUCR_DIR"/setup.bash
+        source "$CUCR_DIR"/setup_cucr.bash
 
     elif [[ $cmd == "set-default" ]]
     then
