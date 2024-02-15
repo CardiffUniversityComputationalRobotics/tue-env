@@ -96,6 +96,7 @@ function cucr-env
         # Create .env and .env/setup directories
         mkdir -p "$dir"/.env/setup
         echo -e "#! /usr/bin/env bash\n" > "$dir"/.env/setup/user_setup.bash
+        echo -e "\nexport CUCR_GIT_USE_SSH=true\n" > "$dir"/.env/setup/user_setup.bash
         echo "[cucr-env] Created new environment $1"
 
         if [[ -n "${targets_url}" ]]
