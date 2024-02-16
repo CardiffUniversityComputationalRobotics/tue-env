@@ -3,11 +3,12 @@ _cucr-check-env-vars || exit 1
 
 function _function_test
 {
-    local function_missing="false"
+    local function_missing
+    function_missing="false"
     # shellcheck disable=SC2048
     for func in $*
     do
-        declare -f "$func" > /dev/null || { echo -e "\033[38;5;1mFunction '$func' missing, resource the setup\033[0m" && function_missing="true"; }
+        declare -f "$func" > /dev/null || { echo -e "\e[38;1mFunction '$func' missing, resource the setup\e[0m" && function_missing="true"; }
     done
     [[ "$function_missing" == "true" ]] && exit 1
 }
@@ -50,7 +51,7 @@ else
         then
             # prompt for conformation
             exec < /dev/tty
-            read -p "[cucr-get] Could not update cucr-get. Continue? " -n 1 -r
+            read -p "[cucr-get] Could not update cucr-get. Continue? [y/N]" -n 1 -r
             exec <&-
             echo    # (optional) move to a new line
             if [[ ! $REPLY =~ ^[Yy]$ ]]
@@ -67,7 +68,7 @@ then
     # shellcheck disable=SC1078,SC1079
     echo """To setup the default cucr-env targets repository do,
 
-cucr-env init-targets git@github.com:CardiffUniversityComputationalRobotics/tue-env.git
+cucr-env init-targets git@github.com:CardiffUniversityComputationalRobotics/tue-env-targets.git
 """
     exit 1
 else
@@ -106,37 +107,50 @@ fi
 
 if [[ -n "$CI" ]] # With continuous integration try to switch the targets repo to the PR branch
 then
-    BRANCH=
+    BRANCH=""
     for var in "$@"
     do
-        if [[ "$var" == --branch* ]]
+        if [[ "${var}" == --try-branch* ]] || [[ "${var}" == --branch* ]]
         then
             # shellcheck disable=SC2001
-            BRANCH=$(echo "$var" | sed -e 's/^[^=]*=//g')
+            BRANCH="$(echo "${var}" | sed -e 's/^[^=]*=//g')${BRANCH:+ ${BRANCH}}"
         fi
     done
 
-    if [ -n "$BRANCH" ]
-    then
-        echo -en "[cucr-env-targets] Trying to switch to branch $BRANCH..."
-        current_branch=$(git -C "$CUCR_ENV_TARGETS_DIR" rev-parse --abbrev-ref HEAD)
+    current_branch=$(git -C "${CUCR_ENV_TARGETS_DIR}" rev-parse --abbrev-ref HEAD)
 
-        if git -C "$CUCR_ENV_TARGETS_DIR" rev-parse --quiet --verify origin/"$BRANCH" 1>/dev/null
+    if ! git -C "${CUCR_ENV_TARGETS_DIR}" rev-parse --quiet --verify origin/"${current_branch}" 1>/dev/null
+    then
+        echo -e "[cucr-env-targets] Current branch '${current_branch}' isn't available anymore, switching to the default branch"
+        __cucr-git-checkout-default-branch "${CUCR_ENV_TARGETS_DIR}"
+        git -C "${CUCR_ENV_TARGETS_DIR}" pull --ff-only --prune
+        git -C "${CUCR_ENV_TARGETS_DIR}" submodule sync --recursive 2>&1
+        git -C "${CUCR_ENV_TARGETS_DIR}" submodule update --init --recursive 2>&1
+        current_branch=$(git -C "${CUCR_ENV_TARGETS_DIR}" rev-parse --abbrev-ref HEAD)
+        echo -e "[cucr-env-targets] Switched to the default branch, '${current_branch}'"
+    fi
+
+    for branch in ${BRANCH}
+    do
+        echo -en "[cucr-env-targets] Trying to switch to branch '${branch}'..."
+
+        if git -C "${CUCR_ENV_TARGETS_DIR}" rev-parse --quiet --verify origin/"${branch}" 1>/dev/null
         then
-            if [[ "$current_branch" == "$BRANCH" ]]
+            if [[ "${current_branch}" == "${branch}" ]]
             then
-                echo -en "Already on branch $BRANCH"
+                echo -en "Already on branch ${branch}"
             else
-                git -C "$CUCR_ENV_TARGETS_DIR" checkout "$BRANCH" 2>&1
-                git -C "$CUCR_ENV_TARGETS_DIR" submodule sync --recursive 2>&1
-                git -C "$CUCR_ENV_TARGETS_DIR" submodule update --init --recursive 2>&1
-                echo -en "Switched to branch $BRANCH"
+                git -C "${CUCR_ENV_TARGETS_DIR}" checkout "${branch}" --recurse-submodules -- 2>&1
+                git -C "${CUCR_ENV_TARGETS_DIR}" submodule sync --recursive 2>&1
+                git -C "${CUCR_ENV_TARGETS_DIR}" submodule update --init --recursive 2>&1
+                echo -e "Switched to branch ${branch}"
             fi
+            break
         else
             echo # (Optional) move to a new line
-            echo -e "[cucr-env-targets] Branch '$BRANCH' does not exist. Current branch is $current_branch"
+            echo -e "[cucr-env-targets] Branch '${branch}' does not exist. Current branch is '${current_branch}'"
         fi
-    fi
+    done
 fi
 
 # Run installer

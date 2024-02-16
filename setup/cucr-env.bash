@@ -16,40 +16,73 @@ function cucr-env
     Possible commands:
 
         init           - Initializes new environment
-        remove         - Removes an existing enviroment
+        remove         - Removes an existing environment
         switch         - Switch to a different environment
         config         - Configures current environment
         set-default    - Set default environment
+        unset-default  - Unset default environment
         init-targets   - (Re-)Initialize the target list
         targets        - Changes directory to targets directory
+        init-venv      - Initializes a virtualenv
         list           - List all possible environments
-        list-current   - Shows current environment
+        current        - Shows current environment
         cd             - Changes directory to environment directory
 """
         return 1
     fi
 
+    local cmd
     cmd=$1
     shift
 
     # Make sure the correct directories are there
     mkdir -p "$CUCR_DIR"/user/envs
 
+    local create_venv dir env_name targets_url show_help
+    create_venv="false"
+    show_help="false"
+
     if [[ $cmd == "init" ]]
     then
-        if [ -z "$1" ]
+        if [[ -n "$1" ]]
         then
-            echo "Usage: cucr-env init NAME [ DIRECTORY ] [ TARGETS GIT URL ]"
+            env_name=$1
+            shift
+            for i in "$@"
+            do
+                case $i in
+                    --targets-url=* )
+                        targets_url="${i#*=}" ;;
+                    --create-virtualenv=* )
+                        create_venv="${i#*=}" ;;
+                    --help )
+                        show_help="true" ;;
+                    * )
+                        if [[ -z "${dir}" ]]
+                        then
+                            dir="$i"
+                        else
+                            cucr-install-error "Unknown input variable $i"
+                        fi
+                        ;;
+                esac
+            done
+        else
+            show_help="true"
+        fi
+
+        if [[ "${show_help}" == "true" ]]
+        then
+            echo "Usage: cucr-env init NAME [ DIRECTORY ] [--help] [--targets-url=TARGETS GIT URL] [--create-virtualenv=false|true]"
             return 1
         fi
 
-        local dir=$PWD   # default directory is current directory
-        [ -z "$2" ] || dir=$2
-        dir="$( realpath "$dir" )"
+        [[ -z "${dir}" ]] && dir=${PWD} # If no directory is given, use current directory
+        dir="$( realpath "${dir}" )"
 
-        if [ -f "$CUCR_DIR"/user/envs/"$1" ]
+        if [ -f "${CUCR_DIR}"/user/envs/"${env_name}" ]
         then
-            echo "[cucr-env] Environment '$1' already exists"
+            echo "[cucr-env] Environment '${env_name}' already exists"
             return 1
         fi
 
@@ -59,15 +92,21 @@ function cucr-env
             return 1
         fi
 
-        echo "$dir" > "$CUCR_DIR"/user/envs/"$1"
+        echo "${dir}" > "${CUCR_DIR}"/user/envs/"${env_name}"
         # Create .env and .env/setup directories
         mkdir -p "$dir"/.env/setup
         echo -e "#! /usr/bin/env bash\n" > "$dir"/.env/setup/user_setup.bash
+        echo -e "\nexport CUCR_GIT_USE_SSH=true\n" > "$dir"/.env/setup/user_setup.bash
         echo "[cucr-env] Created new environment $1"
 
-        if [ -n "$3" ]
+        if [[ -n "${targets_url}" ]]
         then
-            cucr-env init-targets "$1" "$3"
+            cucr-env init-targets "${env_name}" "${targets_url}"
+        fi
+
+        if [[ "${create_venv}" == "true" ]]
+        then
+            cucr-env init-venv "${env_name}"
         fi
 
     elif [[ $cmd == "remove" ]]
@@ -82,27 +121,27 @@ options:
             return 1
         else
             # Set purge to be false by default
+            local PURGE env
             PURGE=false
-            env=""
-            while test $# -gt 0
+            env=
+            for i in "$@"
             do
-                case "$1" in
+                case $i in
                     --purge)
                         PURGE=true
                         ;;
                     --*)
-                        echo "[cucr-env] Unknown option $1"
+                        echo "[cucr-env] Unknown option $i"
                         ;;
                     *)
                         # Read only the first passed environment name and ignore
                         # the rest
-                        if [ -z $env ]
+                        if [ -z "${env}" ]
                         then
-                            env=$1
+                            env=$i
                         fi
                         ;;
                 esac
-                shift
             done
         fi
 
@@ -112,21 +151,29 @@ options:
             return 1
         fi
 
+        local dir
         dir=$(cat "$CUCR_DIR"/user/envs/"$env")
         rm "$CUCR_DIR"/user/envs/"$env"
 
-        if [ $PURGE == "false" ]
+        if [[ -d ${dir} ]]
         then
-            dir_moved=$dir.$(date +%F_%R)
-            mv "$dir" "$dir_moved"
-            # shellcheck disable=SC1078,SC1079
-            echo """[cucr-env] Removed environment '$env'
-Moved environment directory of '$env' to '$dir_moved'"""
+            if [ $PURGE == "false" ]
+            then
+                dir_moved=$dir.$(date +%F_%R)
+                mv "${dir}" "${dir_moved}"
+                # shellcheck disable=SC1078,SC1079
+                echo """[cucr-env] Removed environment '${env}'
+Moved environment directory from '${dir}' to '${dir_moved}'"""
+            else
+                rm -rf "${dir}"
+                # shellcheck disable=SC1078,SC1079
+                echo """[cucr-env] Removed environment '$env'
+Purged environment directory '${dir}'"""
+            fi
         else
-            rm -rf "$dir"
             # shellcheck disable=SC1078,SC1079
-            echo """[cucr-env] Removed environment '$env'
-Purged environment directory of '$env'"""
+            echo """[cucr-env] Removed environment '${env}'
+Environment directory '${dir}' didn't exist (anymore)"""
         fi
 
     elif [[ $cmd == "switch" ]]
@@ -148,7 +195,7 @@ Purged environment directory of '$env'"""
         export CUCR_ENV_DIR
 
         # shellcheck disable=SC1090
-        source "$CUCR_DIR"/setup.bash
+        source "$CUCR_DIR"/setup_cucr.bash
 
     elif [[ $cmd == "set-default" ]]
     then
@@ -162,6 +209,25 @@ Purged environment directory of '$env'"""
         echo "$1" > "$CUCR_DIR"/user/config/default_env
         echo "[cucr-env] Default environment set to $1"
 
+    elif [[ $cmd == "unset-default" ]]
+    then
+        if [ -n "$1" ]
+        then
+            echo "Usage: cucr-env unset-default"
+            echo "No arguments allowed"
+        fi
+
+        if [[ ! -f "${CUCR_DIR}"/user/config/default_env ]]
+        then
+            echo "[cucr-env] No default environment set, nothing to unset"
+            return 1
+        fi
+        local default_env
+        default_env=$(cat "${CUCR_DIR}"/user/config/default_env)
+        rm -f "${CUCR_DIR}"/user/config/default_env
+        echo "[cucr-env] Default environment '${default_env}' unset"
+        return 0
+
     elif [[ $cmd == "init-targets" ]]
     then
         if [ -z "$1" ] || { [ -z "$CUCR_ENV" ] && [ -z "$2" ]; }
@@ -170,15 +236,16 @@ Purged environment directory of '$env'"""
             return 1
         fi
 
-        local env=$1
-        local url=$2
+        local env url
+        env=$1
+        url=$2
         if [ -z "$url" ]
         then
             env=$CUCR_ENV
             if [ -z "$env" ]
             then
                 # This shouldn't be possible logical, should have exited after printing usage
-                echo "[cucr-env](init-targets) no enviroment set or provided"
+                echo "[cucr-env](init-targets) no environment set or provided"
                 return 1
             fi
             url=$1
@@ -201,19 +268,76 @@ Purged environment directory of '$env'"""
 
     elif [[ $cmd == "targets" ]]
     then
-        local env=$1
+        local env
+        env=$1
         [ -n "$env" ] || env=$CUCR_ENV
 
         if [ -n "$env" ]
         then
             local cucr_env_dir
             cucr_env_dir=$(cat "$CUCR_DIR"/user/envs/"$env")
-            cd "$cucr_env_dir"/.env/targets || { echo -e "Targets directory '$cucr_env_dir/.env/targets' (environment '$CUCR_ENV') does not exist"; return 1; }
+            cd "${cucr_env_dir}"/.env/targets || { echo -e "Targets directory '${cucr_env_dir}/.env/targets' (environment '${env}') does not exist"; return 1; }
+        fi
+
+    elif [[ $cmd == "init-venv" ]]
+    then
+        local env
+        env=$1
+        [ -n "${env}" ] || env=${CUCR_ENV}
+
+        if [[ -z "${env}" ]]
+        then
+            echo "[cucr-env](init-venv) no environment set or provided"
+            echo "Usage: cucr-env init-venv [ NAME ]"
+            return 1
+        fi
+
+        python3 -c "import virtualenv" 2>/dev/null ||
+        { echo -e "[cucr-env](init-venv) 'virtualenv' module is not found. Make sure you install it 'sudo apt-get install python3-virtualenv'"; return 1; }
+
+        local cucr_env_dir
+        cucr_env_dir=$(cat "${CUCR_DIR}"/user/envs/"${env}")
+        local venv_dir
+        venv_dir=${cucr_env_dir}/.venv/${env}
+
+        if [ -d "$cucr_env_targets_dir" ]
+        then
+            local targets_dir_moved
+            targets_dir_moved=$cucr_env_targets_dir.$(date +%F_%R)
+            mv -f "$cucr_env_targets_dir" "$targets_dir_moved"
+            echo "[cucr-env] Moved old targets of environment '$env' to $targets_dir_moved"
+        fi
+
+        if [[ -d "${venv_dir}" ]]
+        then
+            local venv_dir_moved
+            venv_dir_moved=${venv_dir}.$(date +%F_%R)
+            if [[ $(basename "${VIRTUAL_ENV}") == "${env}" ]]
+            then
+                echo "[cucr-env](init-venv) deactivating currently active virtualenv of environment '${env}'"
+                deactivate
+            fi
+            mv -f "${venv_dir}" "${venv_dir_moved}"
+            echo "[cucr-env] Moved old virtualenv of environment '${env}' to ${venv_dir_moved}"
+            echo "Don't use it anymore as its old path is hardcoded in the virtualenv"
+        fi
+
+        python3 -m virtualenv "${venv_dir}" -q --system-site-packages --symlinks 2>/dev/null
+        echo "[cucr-env] Initialized virtualenv of environment '${env}'"
+
+        if [ "${env}" == "${CUCR_ENV}" ]
+        then
+            local cucr_env_dir
+            cucr_env_dir=$(cat "${CUCR_DIR}"/user/envs/"${env}")
+            # shellcheck disable=SC1090
+            source "${cucr_env_dir}"/.venv/"${env}"/bin/activate
+            echo "[cucr-env] Activated new virtualenv of currently active environment '${env}'"
         fi
 
     elif [[ $cmd == "config" ]]
     then
-        local env=$1
+        local env
+        env=$1
         shift
         [ -n "$env" ] || env=$CUCR_ENV
 
@@ -229,16 +353,17 @@ Purged environment directory of '$env'"""
 
     elif [[ $cmd == "cd" ]]
     then
-        local env=$1
+        local env
+        env=$1
         [ -n "$env" ] || env=$CUCR_ENV
 
         if [ -n "$env" ]
         then
             local cucr_env_dir
             cucr_env_dir=$(cat "$CUCR_DIR"/user/envs/"$env")
-            cd "$cucr_env_dir" || { echo -e "Environment directory '$cucr_env_dir' (environment '$CUCR_ENV') does not exist"; return 1; }
+            cd "${cucr_env_dir}" || { echo -e "Environment directory '${cucr_env_dir}' (environment '${env}') does not exist"; return 1; }
         else
-            echo "[cucr-env](cd) no enviroment set or provided"
+            echo "[cucr-env](cd) no environment set or provided"
             return 1
         fi
 
@@ -251,13 +376,13 @@ Purged environment directory of '$env'"""
             basename "$env"
         done
 
-    elif [[ $cmd == "list-current" ]]
+    elif [[ $cmd == "current" ]]
     then
         if [[ -n $CUCR_ENV ]]
         then
             echo "$CUCR_ENV"
         else
-            echo "[cucr-env] no enviroment set"
+            echo "[cucr-env] no environment set"
         fi
 
     else
@@ -266,18 +391,22 @@ Purged environment directory of '$env'"""
     fi
 }
 
+export -f cucr-env
+
 # ----------------------------------------------------------------------------------------------------
 
 function _cucr-env
 {
-    local cur=${COMP_WORDS[COMP_CWORD]}
+    local cur
+    cur=${COMP_WORDS[COMP_CWORD]}
 
     if [ "$COMP_CWORD" -eq 1 ]
     then
-        mapfile -t COMPREPLY < <(compgen -W "init list switch list-current remove cd set-default config init-targets targets" -- "$cur")
+        mapfile -t COMPREPLY < <(compgen -W "init list switch current remove cd set-default config init-targets targets init-venv" -- "$cur")
     else
+        local cmd
         cmd=${COMP_WORDS[1]}
-        if [[ $cmd == "switch" ]] || [[ $cmd == "remove" ]] || [[ $cmd == "cd" ]] || [[ $cmd == "set-default" ]] || [[ $cmd == "init-targets" ]] || [[ $cmd == "targets" ]]
+        if [[ $cmd == "switch" ]] || [[ $cmd == "remove" ]] || [[ $cmd == "cd" ]] || [[ $cmd == "set-default" ]] || [[ $cmd == "init-targets" ]] || [[ $cmd == "targets" ]] || [[ $cmd == "init-venv" ]]
         then
             if [ "$COMP_CWORD" -eq 2 ]
             then
@@ -288,7 +417,8 @@ function _cucr-env
 
             elif [[ $cmd == "remove" ]] && [ "$COMP_CWORD" -eq 3 ]
             then
-                local IFS=$'\n'
+                local IFS
+                IFS=$'\n'
                 mapfile -t COMPREPLY < <(compgen -W "'--purge'" -- "$cur")
             fi
         elif [[ $cmd == "config" ]]

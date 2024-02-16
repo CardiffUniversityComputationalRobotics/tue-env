@@ -2,11 +2,12 @@
 
 function _function_test
 {
-    local function_missing="false"
+    local function_missing
+    function_missing="false"
     # shellcheck disable=SC2048
     for func in $*
     do
-        declare -f "$func" > /dev/null || { echo -e "\033[38;5;1mFunction '$func' missing, resource the setup\033[0m" && function_missing="true"; }
+        declare -f "$func" > /dev/null || { echo -e "\e[38;1mFunction '$func' missing, resource the setup\e[0m" && function_missing="true"; }
     done
     [[ "$function_missing" == "true" ]] && exit 1
 }
@@ -23,7 +24,7 @@ mkdir -p "$CUCR_INSTALL_INSTALLED_DIR"
 
 CUCR_INSTALL_TARGETS_DIR=$CUCR_ENV_TARGETS_DIR
 
-CUCR_REPOS_DIR=$CUCR_ENV_DIR/repos
+TUE_APT_GET_UPDATED_FILE=/tmp/tue_get_apt_get_updated
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -43,11 +44,13 @@ function version_gt()
 
 function cucr-install-error
 {
-    echo -e "\033[38;5;1m
+    echo -e "\e[31m
 Error while installing target '$CUCR_INSTALL_CURRENT_TARGET':
 
     $1
-\033[0m" | tee --append "$INSTALL_DETAILS_FILE"
+
+Logfile: $INSTALL_DETAILS_FILE
+\e[0m" | tee --append "$INSTALL_DETAILS_FILE"
     exit 1
 }
 
@@ -55,7 +58,7 @@ Error while installing target '$CUCR_INSTALL_CURRENT_TARGET':
 
 function cucr-install-warning
 {
-    echo -e "\033[33;5;1m[$CUCR_INSTALL_CURRENT_TARGET] WARNING: $*\033[0m" | tee --append "$INSTALL_DETAILS_FILE"
+    echo -e "\e[33;1m[$CUCR_INSTALL_CURRENT_TARGET] WARNING: $*\e[0m" | tee --append "$INSTALL_DETAILS_FILE"
     CUCR_INSTALL_WARNINGS="    [$CUCR_INSTALL_CURRENT_TARGET] $*\n${CUCR_INSTALL_WARNINGS}"
 }
 
@@ -63,7 +66,7 @@ function cucr-install-warning
 
 function cucr-install-info
 {
-    echo -e "\e[0;36m[$CUCR_INSTALL_CURRENT_TARGET] INFO: $*\033[0m"  | tee --append "$INSTALL_DETAILS_FILE"
+    echo -e "\e[0;36m[$CUCR_INSTALL_CURRENT_TARGET] INFO: $*\e[0m"  | tee --append "$INSTALL_DETAILS_FILE"
     CUCR_INSTALL_INFOS="    [$CUCR_INSTALL_CURRENT_TARGET] $*\n${CUCR_INSTALL_INFOS}"
 }
 
@@ -71,12 +74,121 @@ function cucr-install-info
 
 function cucr-install-debug
 {
-    if [ "$DEBUG" = "true" ]
+    if [ "$DEBUG" == "true" ]
     then
-        echo -e "\e[0;34m[$CUCR_INSTALL_CURRENT_TARGET] DEBUG: $*\033[0m"  | tee --append "$INSTALL_DETAILS_FILE"
+        echo -e "\e[0;34m[$CUCR_INSTALL_CURRENT_TARGET] DEBUG: $*\e[0m"  | tee --append "$INSTALL_DETAILS_FILE"
     else
-        echo -e "\e[0;34m[$CUCR_INSTALL_CURRENT_TARGET] DEBUG: $*\033[0m"  | tee --append "$INSTALL_DETAILS_FILE" 1> /dev/null
+        echo -e "\e[0;34m[$CUCR_INSTALL_CURRENT_TARGET] DEBUG: $*\e[0m"  | tee --append "$INSTALL_DETAILS_FILE" 1> /dev/null
     fi
+}
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function cucr-install-echo
+{
+    echo -e "\e[0;1m[$CUCR_INSTALL_CURRENT_TARGET]: $*\e[0m" | tee --append "$INSTALL_DETAILS_FILE"
+}
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function cucr-install-tee
+{
+    echo -e "$*" | tee --append "$INSTALL_DETAILS_FILE"
+}
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function cucr-install-pipe
+{
+    local pipefail_old return_code
+    pipefail_old=$(set -o | grep pipefail | awk '{printf $2}')
+    [ "$pipefail_old" != "on" ] && set -o pipefail # set pipefail if not yet set
+    echo -e "\e[0;1m[$CUCR_INSTALL_CURRENT_TARGET]: $*\e[0m" | tee --append "$INSTALL_DETAILS_FILE"
+    # Executes the command (all arguments), catch stdout and stderr, red styled, print them directly and to file
+    "$@" 2> >(sed $'s,.*,\e[31m&\e[m,'>&1) | tee --append "$INSTALL_DETAILS_FILE"
+    return_code=$?
+    [ "$pipefail_old" != "on" ] && set +o pipefail # restore old pipefail setting
+    return $return_code
+}
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function _remove_old_target_dep_recursively
+{
+    cucr-install-debug "[remove_old_dep] _remove_old_target_dep_recursively $*"
+    local parent_target old_dep_target error_code
+    parent_target=$1
+    old_dep_target=$2
+    error_code=0
+
+    # Remove the parent from the dependants of the old dep
+    local old_dep_dep_on_file
+    old_dep_dep_on_file="${CUCR_INSTALL_DEPENDENCIES_ON_DIR}"/"${old_dep_target}"
+    if [[ -f "${old_dep_dep_on_file}" ]]
+    then
+        # Target is removed, so remove yourself from depend-on files of deps
+        local tmp_dep_on_file found_target
+        tmp_dep_on_file=/tmp/temp_depend_on
+        found_target=false
+        while read -r line
+        do
+            if [[ ${line} != "${parent_target}" ]]
+            then
+                echo "${line}"
+            else
+                found_target=true
+            fi
+        done <"${old_dep_dep_on_file}" >"${tmp_dep_on_file}"
+
+        if ${found_target}
+        then
+            mv "${tmp_dep_on_file}" "${old_dep_dep_on_file}"
+            cucr-install-debug "[remove_old_dep] Removed '${parent_target}' from depend-on file of '${old_dep_target}'"
+        else
+            cucr-install-warning "[remove_old_dep] '${parent_target}' depended on '${old_dep_target}', so ${old_dep_dep_on_file} should existed with '${parent_target}' in it"
+        fi
+    else
+        cucr-install-warning "[remove_old_dep] No dependencies-on file exist for old dependency '${old_dep_target}' of ${parent_target}'"
+    fi
+
+    # When the old dep has no other dependants anymore, remove it, including it deps
+    if [[ -f "${old_dep_dep_on_file}" ]] && [[ -n $(cat "${old_dep_dep_on_file}") ]]
+    then
+        # depend-on is not empty, so not doing anything
+        cucr-install-debug "[remove_old_dep] Other targets still depend on ${old_dep_target}, so ignoring it"
+        return 0
+    else
+        # depend-on is empty, so remove it and continue to actual removing of the target
+        cucr-install-debug "[remove_old_dep] Deleting empty depend-on file of: ${old_dep_target}"
+        rm -f "${old_dep_dep_on_file}"
+    fi
+
+    # Remove the deps of the old dep recursively, of course only, when it does not have any other dependants
+    local old_dep_dep_file
+    old_dep_dep_file="${CUCR_INSTALL_DEPENDENCIES_DIR}"/"${old_dep_target}"
+    if [[ -f "${old_dep_dep_file}" ]]
+    then
+        # Iterate over all depencies of old_dep_target, which is removed.
+        while read -r dep_of_old_dep
+        do
+            # Actually remove the deps
+            local dep_error
+            _remove_old_target_dep_recursively "${old_dep_target}" "${dep_of_old_dep}"
+            dep_error=$?
+            if [ ${dep_error} -gt 0 ]
+            then
+                error_code=1
+            fi
+
+        done < "${old_dep_dep_file}"
+        rm -f "${old_dep_dep_file}"
+    else
+        cucr-install-debug "[remove_old_dep] No depencies file exist for target: ${old_dep_target}"
+    fi
+
+    cucr-install-debug "[remove_old_dep] Uninstalled '${old_dep_target}' as a dependency of '${parent_target}'"
+    cucr-install-info "[remove_old_dep] '${old_dep_target}' has been uninstalled, you can remove it from the workspace or deinstall it in another way"
+    return ${error_code}
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -85,7 +197,8 @@ function cucr-install-target-now
 {
     cucr-install-debug "cucr-install-target-now $*"
 
-    local target=$1
+    local target
+    target=$1
 
     cucr-install-debug "calling: cucr-install-target $target true"
     cucr-install-target "$target" "true"
@@ -98,8 +211,9 @@ function cucr-install-target
 {
     cucr-install-debug "cucr-install-target $*"
 
-    local target=$1
-    local now=$2
+    local target now
+    target=$1
+    now=$2
 
     cucr-install-debug "Installing target: $target"
 
@@ -110,7 +224,8 @@ function cucr-install-target
         return 1
     fi
 
-    local parent_target=$CUCR_INSTALL_CURRENT_TARGET
+    local parent_target
+    parent_target=$CUCR_INSTALL_CURRENT_TARGET
     CUCR_INSTALL_CURRENT_TARGET_DIR=$CUCR_INSTALL_TARGETS_DIR/$target
     CUCR_INSTALL_CURRENT_TARGET=$target
 
@@ -126,11 +241,13 @@ function cucr-install-target
         fi
     fi
 
-    local state_file="$CUCR_INSTALL_STATE_DIR"/"$target"
-    local state_file_now="${state_file}-now"
+    local state_file state_file_now
+    state_file="$CUCR_INSTALL_STATE_DIR"/"$target"
+    state_file_now="${state_file}-now"
 
     # Determine if this target needs to be executed
-    local execution_needed="true"
+    local execution_needed
+    execution_needed="true"
 
     if [[ "$CI" == "true" ]] && [[ -f "$CUCR_INSTALL_CURRENT_TARGET_DIR"/.ci_ignore ]]
     then
@@ -162,12 +279,22 @@ function cucr-install-target
     then
         cucr-install-debug "Starting installation"
 
-        local install_file=$CUCR_INSTALL_CURRENT_TARGET_DIR/install
+        local install_file
+        install_file=$CUCR_INSTALL_CURRENT_TARGET_DIR/install
 
         # Empty the target's dependency file
+        local old_deps
+        if [[ -f "${CUCR_INSTALL_DEPENDENCIES_DIR}"/"${target}" ]]
+        then
+            old_deps=$(cat "${CUCR_INSTALL_DEPENDENCIES_DIR}"/"${target}")
+            cucr-install-debug "Old dependencies:\n${old_deps}"
+        else
+            cucr-install-debug "No old dependencies"
+        fi
         cucr-install-debug "Emptying $CUCR_INSTALL_DEPENDENCIES_DIR/$target"
         truncate -s 0 "$CUCR_INSTALL_DEPENDENCIES_DIR"/"$target"
-        local target_processed=false
+        local target_processed
+        target_processed=false
 
         if [ -f "$install_file".yaml ]
         then
@@ -177,16 +304,20 @@ function cucr-install-target
                 target_processed=true
             else
                 cucr-install-debug "Parsing $install_file.yaml"
-                local now_cmd=""
+                # Do not use 'local cmds=' because it does not preserve command output status ($?)
+                local now_cmd
                 [ "$now" == "true" ] && now_cmd="--now"
                 # Do not use 'local cmds=' because it does not preserve command output status ($?)
                 local cmds
-                if cmds=$("$CUCR_INSTALL_SCRIPTS_DIR"/parse-install-yaml_cucr.py "$install_file".yaml $now_cmd)
+                if cmds=$("$CUCR_INSTALL_SCRIPTS_DIR"/parse_install_yaml_cucr.py "$install_file".yaml $now_cmd)
                 then
                     for cmd in $cmds
                     do
+                        # Don't use cucr-install-pipe here. As we are calling other cucr-install functions, which already
+                        # implement cucr-install-pipe for their external calls
                         cucr-install-debug "Running following command: ${cmd//^/ }"
                         ${cmd//^/ } || cucr-install-error "Error while running: ${cmd//^/ }"
+                        cucr-install-debug "Done: Running following command: ${cmd//^/ }"
                     done
                     target_processed=true
                 else
@@ -204,6 +335,7 @@ function cucr-install-target
                 cucr-install-debug "Sourcing $install_file.bash"
                 # shellcheck disable=SC1090
                 source "$install_file".bash
+                cucr-install-debug "Done: Sourcing $install_file.bash"
             fi
             target_processed=true
         fi
@@ -212,6 +344,27 @@ function cucr-install-target
         then
             cucr-install-warning "Target $target does not contain a valid install.yaml/bash file"
         fi
+
+        local new_deps old_deps_removed
+        new_deps=$(cat "${CUCR_INSTALL_DEPENDENCIES_DIR}"/"${target}")
+        cucr-install-debug "Old dependencies:\n${old_deps}"
+        cucr-install-debug "Current dependencies:\n${new_deps}"
+        old_deps_removed=$(comm -23 <(echo "${old_deps}") <(echo "${new_deps}"))
+        if [[ -n ${old_deps_removed} ]]
+        then
+            cucr-install-debug "Following dropped depedencies need to be removed:\n${old_deps_removed}"
+        else
+            cucr-install-debug "No dropped dependencies to be removed"
+        fi
+
+        for dep in ${old_deps_removed}
+        do
+            # Remove this target from dep-on file of dep
+            # When the dep-on file is now empty, remove it
+            # Recurisvely -> Remove it from the dep-on files of its deps
+            cucr-install-debug "Going to remove '${dep}' as a dependency"
+            _remove_old_target_dep_recursively "${target}" "${dep}" || cucr-install-error "Something went wrong while removing '${dep}' as a dependency"
+        done
 
         if [ "$now" == "true" ]
         then
@@ -235,36 +388,14 @@ function _show_update_message
     # shellcheck disable=SC2086,SC2116
     if [ -n "$(echo $2)" ]
     then
-        echo -e "\n    \033[1m$1\033[0m"                          | tee --append "$INSTALL_DETAILS_FILE"
-        echo "--------------------------------------------------" | tee --append "$INSTALL_DETAILS_FILE"
-        echo -e "$2"                                              | tee --append "$INSTALL_DETAILS_FILE"
-        echo "--------------------------------------------------" | tee --append "$INSTALL_DETAILS_FILE"
-        echo ""                                                   | tee --append "$INSTALL_DETAILS_FILE"
+        cucr-install-tee "\n    \e[1m$1\e[0m"
+        cucr-install-tee "--------------------------------------------------"
+        cucr-install-tee "$2"
+        cucr-install-tee "--------------------------------------------------"
+        cucr-install-tee ""
     else
-        echo -e "\033[1m$1\033[0m: up-to-date"                    | tee --append "$INSTALL_DETAILS_FILE"
+        cucr-install-tee "\e[1m$1\e[0m: up-to-date"
     fi
-}
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-function cucr-install-svn
-{
-    cucr-install-debug "cucr-install-svn $*"
-
-    cucr-install-system-now subversion
-    local res
-    if [ ! -d "$2" ]
-    then
-        res=$(svn co "$1" "$2" --trust-server-cert --non-interactive 2>&1)
-    else
-        res=$(svn up "$2" --trust-server-cert --non-interactive 2>&1)
-        if echo "$res" | grep -q "At revision";
-        then
-            res=
-        fi
-    fi
-
-    _show_update_message "$CUCR_INSTALL_CURRENT_TARGET" "$res"
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -278,27 +409,35 @@ function _try_branch_git
         cucr-install-error "Invalid _try_branch_git: needs two arguments (repo and branch)."
     fi
 
-    cucr-install-debug "git -C $1 checkout $2"
-    _try_branch_res=$(git -C "$1" checkout "$2" 2>&1) # This is a "global" variable from cucr-install-git
-    cucr-install-debug "_try_branch_res: $_try_branch_res"
+    local repo branch _checkout_error_code
+    repo="$1"
+    branch="$2"
+    cucr-install-debug "git -C ${repo} checkout ${branch} --recurse-submodules --"
+    _try_branch_res=$(git -C "${repo}" checkout "${branch}" --recurse-submodules -- 2>&1)  # _try_branch_res is a "global" variable from cucr-install-git
+    _checkout_error_code=$?
+    cucr-install-debug "_try_branch_res(${_checkout_error_code}): ${_try_branch_res}"
 
-    local _submodule_sync_res _submodule_sync_error_code
-    cucr-install-debug "git -C $1 submodule sync --recursive"
-    _submodule_sync_res=$(git -C "$1" submodule sync --recursive 2>&1)
-    _submodule_sync_error_code=$?
-    cucr-install-debug "_submodule_sync_res: $_submodule_sync_res"
-
-    local _submodule_res
-    cucr-install-debug "git -C $1 submodule update --init --recursive"
-    _submodule_res=$(git -C "$1" submodule update --init --recursive 2>&1)
-    cucr-install-debug "_submodule_res: $_submodule_res"
-
-    if [[ $_try_branch_res == "Already on "* || $_try_branch_res == "error: pathspec"* ]]
+    if [[ ${_try_branch_res} == "Already on "* || ${_try_branch_res} == "fatal: invalid reference:"* ]]
     then
         _try_branch_res=
     fi
-    [ "$_submodule_sync_error_code" -gt 0 ] && [ -n "$_submodule_sync_res" ] && _try_branch_res="${res:+${res} }$_submodule_sync_res"
-    [ -n "$_submodule_res" ] && _try_branch_res="${_try_branch_res:+${_try_branch_res} }$_submodule_res"
+    [ "${_checkout_error_code}" -gt 0 ] && return ${_checkout_error_code}
+
+    local _submodule_sync_res _submodule_sync_error_code
+    cucr-install-debug "git -C $repo submodule sync --recursive"
+    _submodule_sync_res=$(git -C "$repo" submodule sync --recursive 2>&1)
+    _submodule_sync_error_code=$?
+    cucr-install-debug "_submodule_sync_res(${_submodule_sync_error_code}): ${_submodule_sync_res}"
+
+    local _submodule_res
+    cucr-install-debug "git -C $repo submodule update --init --recursive"
+    _submodule_res=$(git -C "$repo" submodule update --init --recursive 2>&1)
+    cucr-install-debug "_submodule_res: $_submodule_res"
+
+    [ "$_submodule_sync_error_code" -gt 0 ] && [ -n "$_submodule_sync_res" ] && _try_branch_res="${res:+${res}\n}$_submodule_sync_res"
+    [ -n "$_submodule_res" ] && _try_branch_res="${_try_branch_res:+${_try_branch_res}\n}$_submodule_res"
+
+    return ${_checkout_error_code}
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -307,28 +446,61 @@ function cucr-install-git
 {
     cucr-install-debug "cucr-install-git $*"
 
-    local repo=$1
-    local repo_pre="$repo"
-    local targetdir=$2
-    local version=$3
+    local repo repo_pre
+    repo=$1
+    repo_pre="$repo"
 
     # Change url to https/ssh
     repo=$(_cucr_git_https_or_ssh "$repo")
-    if ! grep -q "^git@.*\.git$\|^https://.*\.git$" <<< "$repo"
+    if [[ -z "${repo}" ]]
     then
         # shellcheck disable=SC2140
         cucr-install-error "repo: '$repo' is invalid. It is generated from: '$repo_pre'\n"\
 "The problem will probably be solved by resourcing the setup"
     fi
 
+    local targetdir version
+    targetdir=$(_git_url_to_repos_dir "${repo_pre}")
+
+    # The shift here is to ensure that all options are explicitly checked as they can be at most 2
+    # and are optional
+    shift
+    if [[ $# -gt 2 ]]
+    then
+        cucr-install-error "Invalid number of arguments"
+    fi
+
+    if [[ -n $1 ]]
+    then
+        for i in "$@"
+        do
+            case $i in
+                --target-dir=* )
+                    targetdir="${i#*=}"
+                    targetdir="${targetdir/#\~/$HOME}"
+                    ;;
+                --version=* )
+                    version="${i#*=}" ;;
+                * )
+                    cucr-install-error "Unknown input variable ${i}" ;;
+            esac
+        done
+    fi
+
+    if [[ -z "${targetdir}" ]]
+    then
+        cucr-install-error "Target directory path cannot be empty"
+    fi
+
+    local res
     if [ ! -d "$targetdir" ]
     then
         cucr-install-debug "git clone --recursive $repo $targetdir"
         res=$(git clone --recursive "$repo" "$targetdir" 2>&1)
-        CUCR_INSTALL_GIT_PULL_Q+=$targetdir
+        CUCR_INSTALL_GIT_PULL_Q+=:$targetdir:
     else
         # Check if we have already pulled the repo
-        if [[ $CUCR_INSTALL_GIT_PULL_Q =~ $targetdir ]]
+        if [[ $CUCR_INSTALL_GIT_PULL_Q == *:$targetdir:* ]]
         then
             cucr-install-debug "Repo previously pulled, skipping"
             # We have already pulled this repo, skip it
@@ -342,30 +514,28 @@ function cucr-install-git
             # If different, switch url
             if [ "$current_url" != "$repo" ]
             then
-                cucr-install-debug "git -C $targetdir remote set-url origin $repo"
-                git -C "$targetdir" remote set-url origin "$repo"
+                cucr-install-pipe git -C "$targetdir" remote set-url origin "$repo" || cucr-install-error "Could not change git url of '$targetdir' to '$repo'"
                 cucr-install-info "URL has switched to $repo"
             fi
 
-            local res
             cucr-install-debug "git -C $targetdir pull --ff-only --prune"
             res=$(git -C "$targetdir" pull --ff-only --prune 2>&1)
             cucr-install-debug "res: $res"
 
-            CUCR_INSTALL_GIT_PULL_Q+=$targetdir
+            CUCR_INSTALL_GIT_PULL_Q+=:$targetdir:
 
             local submodule_sync_res submodule_sync_error_code
             cucr-install-debug "git -C $targetdir submodule sync --recursive"
             submodule_sync_res=$(git -C "$targetdir" submodule sync --recursive)
             submodule_sync_error_code=$?
-            cucr-install-debug "submodule_sync_res: $submodule_sync_res"
-            [ "$submodule_sync_error_code" -gt 0 ] && [ -n "$submodule_sync_res" ] && res="${res:+${res} }$submodule_sync_res"
+            cucr-install-debug "submodule_sync_res(${submodule_sync_error_code}): ${submodule_sync_res}"
+            [ "${submodule_sync_error_code}" -gt 0 ] && [ -n "${submodule_sync_res}" ] && res="${res:+${res}\n}${submodule_sync_res}"
 
             local submodule_res
             cucr-install-debug "git -C $targetdir submodule update --init --recursive"
             submodule_res=$(git -C "$targetdir" submodule update --init --recursive 2>&1)
             cucr-install-debug "submodule_res: $submodule_res"
-            [ -n "$submodule_res" ] && res="${res:+${res} }$submodule_res"
+            [ -n "$submodule_res" ] && res="${res:+${res}\n}$submodule_res"
 
             if [ "$res" == "Already up to date." ]
             then
@@ -383,132 +553,25 @@ function cucr-install-git
         echo "$version" > "$version_cache_file"
         _try_branch_res=""
         _try_branch_git "$targetdir" "$version"
-        [ -n "$_try_branch_res" ] && res="${res:+${res} }$_try_branch_res"
+        [ -n "$_try_branch_res" ] && res="${res:+${res}\n}$_try_branch_res"
     else
         rm "$version_cache_file" 2>/dev/null
     fi
 
-    cucr-install-debug "Desired branch: $BRANCH"
-    if [ -n "$BRANCH" ] # Cannot be combined with version-if because this one might not exist
-    then
+    local _try_branch_error_code
+    cucr-install-debug "Desired branch(es): ${BRANCH}"
+    for branch in ${BRANCH}
+    do
+        cucr-install-debug "Parsed branch '${branch}'"
         _try_branch_res=""
-        _try_branch_git "$targetdir" "$BRANCH"
-        [ -n "$_try_branch_res" ] && res="${res:+${res} }$_try_branch_res"
-    fi
+        _try_branch_git "${targetdir}" "${branch}"
+        _try_branch_error_code=$?
+        [ -n "${_try_branch_res}" ] && res="${res:+${res}\n}${_try_branch_res}"
+        [ "${_try_branch_error_code}" -eq 0 ] && break
+    done
 
     _show_update_message "$CUCR_INSTALL_CURRENT_TARGET" "$res"
 }
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-function cucr-install-hg
-{
-    cucr-install-debug "cucr-install-hg $*"
-
-    local repo=$1
-    local targetdir=$2
-    local version=$3
-
-    # Mercurial config extension to write configs from cli
-    local hgcfg_folder="$HOME"/src/hgcfg
-    local hgcfg_pulled=/tmp/cucr_get_hgcfg_pulled
-    if [ ! -f "$hgcfg_pulled" ]
-    then
-        parent_target=$CUCR_INSTALL_CURRENT_TARGET
-        CUCR_INSTALL_CURRENT_TARGET="hgcfg"
-        cucr-install-git "git@github.com/cucr-robotics/hgconfig.git" "$hgcfg_folder"
-        CUCR_INSTALL_CURRENT_TARGET=$parent_target
-        if [ -z "$(hg config extensions.hgcfg)" ]
-        then
-            echo -e "\n[extensions]" >> ~/.hgrc
-            echo -e "hgcfg = $hgcfg_folder/hgext/hgcfg.py" >> ~/.hgrc
-            hg cfg --user config.delete_on_replace True
-        fi
-        touch $hgcfg_pulled
-    fi
-
-    if [ ! -d "$targetdir" ]
-    then
-        cucr-install-debug "hg clone $repo $targetdir"
-        res=$(hg clone "$repo" "$targetdir" 2>&1)
-        CUCR_INSTALL_HG_PULL_Q+=$targetdir
-    else
-        # Check if we have already pulled the repo
-        if [[ $CUCR_INSTALL_HG_PULL_Q =~ $targetdir ]]
-        then
-            cucr-install-debug "Repo previously pulled, skipping"
-            # We have already pulled this repo, skip it
-            res=
-        else
-            # Switch url of origin to use https/ssh if different
-            # Get current remote url
-            local current_url
-            current_url=$(hg -R "$targetdir" cfg paths.default | awk '{print $2}')
-
-            # If different, switch url
-            if [ "$current_url" != "$repo" ]
-            then
-                cucr-install-debug "hg -R $targetdir config paths.default $repo"
-                hg -R "$targetdir" config paths.default "$repo"
-                cucr-install-info "URL has switched to $repo"
-            fi
-
-            cucr-install-debug "hg -R $targetdir pull -u"
-
-            local res
-            res=$(hg -R "$targetdir" pull -u 2>&1)
-
-            cucr-install-debug "$res"
-
-            CUCR_INSTALL_HG_PULL_Q+=$targetdir
-
-            if [[ $res == *"no changes found" ]]
-            then
-                res=
-            fi
-        fi
-    fi
-
-    cucr-install-debug "Desired version: $version"
-    local _try_branch_res # Will be used in _try_branch_hg
-    if [ -n "$version" ]
-    then
-        _try_branch_res=""
-        _try_branch_hg "$targetdir" "$version"
-        [ -n "$_try_branch_res" ] && res="${res:+${res} }$_try_branch_res"
-    fi
-
-    cucr-install-debug "Desired branch: $BRANCH"
-    if [ -n "$BRANCH" ] # Cannot be combined with version-if because this one might not exist
-    then
-        _try_branch_res=""
-        _try_branch_hg "$targetdir" "$BRANCH"
-        [ -n "$_try_branch_res" ] && res="${res:+${res} }$_try_branch_res"
-    fi
-
-    _show_update_message "$CUCR_INSTALL_CURRENT_TARGET" "$res"
-}
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-
-function _try_branch_hg
-{
-    cucr-install-debug "_try_branch_hg $*"
-
-    if [ -z "$2" ]
-    then
-        cucr-install-error "Invalid _try_branch_hg: needs two arguments (repo and branch)."
-    fi
-
-    cucr-install-debug "hg -R $1 checkout $2"
-    _try_branch_res=$(hg -R "$1" checkout "$2" 2>&1) # This is a "global" variable from cucr-install-hg
-    cucr-install-debug "_try_branch_res: $_try_branch_res"
-    if [[ $_try_branch_res == "1 files updated, 0 files merged, 1 files removed, 0 files unresolved" || $_try_branch_res == "abort: unknown revision"* ]]
-    then
-        _try_branch_res=
-    fi
-}
-
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
@@ -557,8 +620,7 @@ Command: cucr-install-cp $*"
         root_required=false
     fi
 
-    local cp_target=
-    local cp_target_parent_dir=
+    local cp_target cp_target_parent_dir
 
     if [ -d "$2" ]
     then
@@ -586,16 +648,101 @@ Command: cucr-install-cp $*"
             cucr-install-debug "File $file and $cp_target are different, copying..."
             if "$root_required"
             then
-                cucr-install-debug "Using elevated privileges (sudo)"
-                sudo mkdir --parents --verbose "$cp_target_parent_dir" && sudo cp --verbose "$file" "$cp_target"
+                cucr-install-debug "Using elevated privileges (sudo) to copy ${file} to ${cp_target}"
+                cucr-install-pipe sudo mkdir --parents --verbose "$cp_target_parent_dir" && cucr-install-pipe sudo cp --verbose "$file" "$cp_target"
             else
-                mkdir --parents --verbose "$cp_target_parent_dir" && cp --verbose "$file" "$cp_target"
+                cucr-install-pipe mkdir --parents --verbose "$cp_target_parent_dir" && cucr-install-pipe cp --verbose "$file" "$cp_target"
             fi
         else
             cucr-install-debug "File $file and $cp_target are the same, no action needed"
         fi
 
     done
+}
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function cucr-install-ln
+{
+    cucr-install-debug "cucr-install-ln $*"
+
+    if [ -z "$2" ]
+    then
+        cucr-install-error "Invalid cucr-install-ln call: needs two arguments (target and link). The target must be an absolute path or relative to the installer target directory
+Command: cucr-install-ln $*"
+    fi
+
+    local target="$1"
+    target="${target/#\~/${HOME}}"
+    local link="$2"
+    link="${link/#\~/${HOME}}"
+
+    if [[ "${target}" != "/"* ]]
+    then
+        cucr-install-debug "Target '${target}' is not an absolute path. Making it relative to the current target directory"
+        target="${CUCR_INSTALL_CURRENT_TARGET_DIR}"/"${target}"
+    fi
+
+    if [[ ! -e "${target}" ]]
+    then
+        cucr-install-error "Target '${target}' does not exist. Therefore a link can not be created"
+    fi
+
+    # Check if user is allowed to write on target destination
+    local root_required=true
+    if namei -l "${link}" | grep -q "$(whoami)"
+    then
+        root_required=false
+    fi
+
+    local remove_existing_link=false
+    local create_link=false
+
+    if [[ -L "${link}" ]]
+    then
+        cucr-install-debug "Link '${link}' is a link"
+        if [[ "$(realpath "${link}" 2>/dev/null)" != "$(realpath "${target}")" ]]
+        then
+            cucr-install-debug "Link '${link}' links to '$(realpath "${link}")' instead of target '${target}'"
+            remove_existing_link=true
+            create_link=true
+        else
+            cucr-install-debug "Link '${link}' already links to target '${target}'"
+        fi
+    else
+        create_link=true
+        if [[ -e "${link}" ]]
+        then
+            cucr-install-debug "Link '${link}' is a file. Which will be removed"
+            remove_existing_link=true
+        else
+            cucr-install-debug "Link '${link}' to target '${target}' does not exist"
+        fi
+    fi
+
+    if [[ "${remove_existing_link}" == "true" ]]
+    then
+        if "$root_required"
+        then
+            cucr-install-debug "Using elevated privileges (sudo) to delete link '${link}'"
+            cucr-install-pipe sudo rm "${link}"
+        else
+            cucr-install-debug "Deleting link '${link}'"
+            cucr-install-pipe rm "${link}"
+        fi
+    fi
+
+    if [[ "${create_link}" == "true" ]]
+    then
+        if "$root_required"
+        then
+            cucr-install-debug "Using elevated privileges (sudo) to create link '${link}' to target '${target}'"
+            cucr-install-pipe sudo ln -s "${target}" "${link}"
+        else
+            cucr-install-debug "Creating link '${link}' to target '${target}'"
+            cucr-install-pipe ln -s "${target}" "${link}"
+        fi
+    fi
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -620,9 +767,8 @@ function cucr-install-add-text
         cucr-install-error "Invalid cucr-install-add-text call. Usage: cucr-install-add-text SOURCE_FILE TARGET_FILE"
     fi
 
-    cucr-install-debug "cucr-install-add-text $*"
-
-    local source_file=$1
+    local source_file
+    source_file=$1
     # shellcheck disable=SC2088
     if [[ "$source_file" == "/"* ]] || [[ "$source_file" == "~/"* ]]
     then
@@ -630,14 +776,16 @@ function cucr-install-add-text
     else
         source_file="$CUCR_INSTALL_CURRENT_TARGET_DIR"/"$source_file"
     fi
-    local target_file=$2
+    local target_file
+    target_file=$2
     # shellcheck disable=SC2088
     if [[ "$target_file" != "/"* ]] && [[ "$source_file" != "~/"* ]]
     then
         cucr-install-error "cucr-install-add-text: target file needs to be absolute or relative to the home directory"
     fi
 
-    local root_required=true
+    local root_required
+    root_required=true
     if namei -l "$target_file" | grep -q "$(whoami)"
     then
         cucr-install-debug "cucr-install-add-text: NO root required"
@@ -673,8 +821,9 @@ function cucr-install-add-text
         fi
     else
         cucr-install-debug "cucr-install-add-text: Begin tag already in $target_file, so comparing the files for changed lines"
-        local tmp_source_file="/tmp/cucr-install-add-text_source_temp_${USER}_${CUCR_INSTALL_CURRENT_TARGET}_${stamp}"
-        local tmp_target_file="/tmp/cucr-install-add-text_target_temp_${USER}_${CUCR_INSTALL_CURRENT_TARGET}_${stamp}"
+        local tmp_source_file tmp_target_file
+        tmp_source_file="/tmp/cucr-install-add-text_source_temp_${USER}_${CUCR_INSTALL_CURRENT_TARGET}_${stamp}"
+        tmp_target_file="/tmp/cucr-install-add-text_target_temp_${USER}_${CUCR_INSTALL_CURRENT_TARGET}_${stamp}"
 
         echo "$text" | tee "$tmp_source_file" > /dev/null
         sed -e "/^$end_tag/r $tmp_source_file" -e "/^$begin_tag/,/^$end_tag/d" "$target_file" | tee "$tmp_target_file" 1> /dev/null
@@ -706,10 +855,10 @@ function cucr-install-get-releases
         cucr-install-error "Invalid cucr-install-get-releases call: needs at least 3 input parameters"
     fi
 
-    local repo_short_url=$1
-    local filename=$2
-    local output_dir=$3
-    local tag=
+    local repo_short_url filename output_dir tag
+    repo_short_url=$1
+    filename=$2
+    output_dir=$3
 
     if [ -z "$4" ]
     then
@@ -747,8 +896,7 @@ function cucr-install-system-now
         cucr-install-error "Invalid cucr-install-system-now call: needs package as argument."
     fi
 
-    local pkgs_to_install=""
-    local dpkg_query
+    local pkgs_to_install dpkg_query
     # shellcheck disable=SC2016
     dpkg_query=$(dpkg-query -W -f '${package} ${status}\n' 2>/dev/null)
     # shellcheck disable=SC2048
@@ -756,7 +904,7 @@ function cucr-install-system-now
     do
         # Check if pkg is not already installed dpkg -S does not cover previously removed packages
         # Based on https://stackoverflow.com/questions/1298066
-        if ! echo "$dpkg_query" | grep -q "^$pkg install ok installed"
+        if ! grep -q "^$pkg install ok installed" <<< "$dpkg_query"
         then
             pkgs_to_install="$pkgs_to_install $pkg"
         else
@@ -766,13 +914,12 @@ function cucr-install-system-now
 
     if [ -n "$pkgs_to_install" ]
     then
-        echo -e "Going to run the following command:\n"
-        echo -e "sudo apt-get install --assume-yes -q $pkgs_to_install\n"
+        cucr-install-echo "Going to run the following command:\n\nsudo apt-get install --assume-yes -q $pkgs_to_install\n"
 
         # Wait for apt-lock first (https://askubuntu.com/a/375031)
         i=0
         tput sc
-        while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1
+        while sudo fuser /var/lib/dpkg/lock >/dev/null 2>&1
         do
             case $((i % 4)) in
                 0 ) j="-" ;;
@@ -786,20 +933,26 @@ function cucr-install-system-now
             ((i=i+1))
         done
 
-        local apt_get_updated=/tmp/cucr_get_apt_get_updated
-        if [ ! -f "$apt_get_updated" ]
+        if [ ! -f "$CUCR_APT_GET_UPDATED_FILE" ]
         then
             # Update once every boot. Or delete the tmp file if you need an update before installing a pkg.
-            cucr-install-debug "sudo apt-get update -qq"
-            sudo apt-get update -qq
-            touch $apt_get_updated
+            cucr-install-pipe sudo apt-get update || cucr-install-error "An error occurred while updating apt-get."
+            touch $CUCR_APT_GET_UPDATED_FILE
         fi
 
-        cucr-install-debug "sudo apt-get install --assume-yes -q $pkgs_to_install"
         # shellcheck disable=SC2086
-        sudo apt-get install --assume-yes -q $pkgs_to_install || cucr-install-error "An error occurred while installing system packages."
+        cucr-install-pipe sudo apt-get install --assume-yes -q $pkgs_to_install || cucr-install-error "An error occurred while installing system packages."
         cucr-install-debug "Installed $pkgs_to_install ($?)"
     fi
+}
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function cucr-install-apt-get-update
+{
+    cucr-install-debug "cucr-install-apt-get-update"
+    cucr-install-debug "Requiring an update of apt-get before next 'apt-get install'"
+    rm -f $CUCR_APT_GET_UPDATED_FILE
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -812,7 +965,8 @@ function cucr-install-ppa
     then
         cucr-install-error "Invalid cucr-install-ppa call: needs ppa as argument."
     fi
-    local ppa="$*"
+    local ppa
+    ppa="$*"
 
     if [[ $ppa != "ppa:"* && $ppa != "deb"* ]]
     then
@@ -833,8 +987,7 @@ function cucr-install-ppa-now
         cucr-install-error "Invalid cucr-install-ppa-now call: needs ppa or deb as argument."
     fi
 
-    local PPA_ADDED=""
-    local needs_to_be_added
+    local PPA_ADDED args needs_to_be_added sources_list_entry
     # shellcheck disable=SC2048
     for ppa in $*
     do
@@ -844,6 +997,7 @@ function cucr-install-ppa-now
             cucr-install-error "Invalid cucr-install-ppa-now call: needs to start with 'ppa:' or 'deb ' ($ppa)"
         fi
         needs_to_be_added="false"
+        sources_list_entry="false"
         if [[ "$ppa" == "ppa:"* ]]
         then
             if ! grep -q "^deb.*${ppa#ppa:}" /etc/apt/sources.list.d/* 2>&1
@@ -852,6 +1006,7 @@ function cucr-install-ppa-now
             fi
         elif [[ "$ppa" == "deb "* ]]
         then
+            sources_list_entry="true"
             if ! grep -qF "$ppa" /etc/apt/sources.list 2>&1
             then
                 needs_to_be_added="true"
@@ -864,8 +1019,32 @@ function cucr-install-ppa-now
         then
             cucr-install-system-now software-properties-common
             cucr-install-info "Adding ppa: $ppa"
-            cucr-install-debug "sudo add-apt-repository --yes $ppa"
-            sudo add-apt-repository --yes "$ppa" || cucr-install-error "An error occurred while adding ppa: $ppa"
+
+            # Wait for apt-lock first (https://askubuntu.com/a/375031)
+            i=0
+            tput sc
+            while sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1
+            do
+                case $((i % 4)) in
+                    0 ) j="-" ;;
+                    1 ) j="\\" ;;
+                    2 ) j="|" ;;
+                    3 ) j="/" ;;
+                esac
+                tput rc
+                echo -en "\r[$j] Waiting for other software managers to finish..."
+                sleep 0.5
+                ((i=i+1))
+            done
+
+            args="--yes --no-update"
+
+            if [[ "${sources_list_entry}" == "true" ]]
+            then
+                args="${args:+${args} }-S"
+            fi
+            # shellcheck disable=SC2086
+            cucr-install-pipe sudo add-apt-repository ${args} "$ppa" || cucr-install-error "An error occurred while adding ppa: $ppa"
             PPA_ADDED=true
         else
             cucr-install-debug "$ppa is already added previously"
@@ -873,8 +1052,7 @@ function cucr-install-ppa-now
     done
     if [ -n "$PPA_ADDED" ]
     then
-        cucr-install-debug "sudo apt-get update -qq"
-        sudo apt-get update -qq
+        cucr-install-apt-get-update
     fi
 }
 
@@ -882,29 +1060,29 @@ function cucr-install-ppa-now
 
 function _cucr-install-pip
 {
-    local pv=$1
+    local pv name
+    pv=$1
     shift
     cucr-install-debug "cucr-install-pip${pv} $*"
+    name="$*"
+    name="${name// /^}"
 
     if [ -z "$1" ]
     then
         cucr-install-error "Invalid cucr-install-pip${pv} call: needs package as argument."
     fi
-    cucr-install-debug "Adding $1 to pip${pv} list"
-    local list=CUCR_INSTALL_PIP"${pv}"S
+
+    cucr-install-debug "Adding $name to pip${pv} list"
+    local list
+    list=CUCR_INSTALL_PIP"${pv}"S
     # shellcheck disable=SC2140
-    declare -g "$list"="$1 ${!list}"
+    declare -g "$list"="$name ${!list}"
 }
 
 # Needed for backward compatibility
 function cucr-install-pip
 {
-    _cucr-install-pip "2" "$@"
-}
-
-function cucr-install-pip2
-{
-    _cucr-install-pip "2" "$@"
+    _cucr-install-pip "3" "$@"
 }
 
 function cucr-install-pip3
@@ -916,7 +1094,8 @@ function cucr-install-pip3
 
 function _cucr-install-pip-now
 {
-    local pv=$1
+    local pv
+    pv=$1
     shift
     cucr-install-debug "cucr-install-pip${pv}-now $*"
 
@@ -925,22 +1104,23 @@ function _cucr-install-pip-now
         cucr-install-error "Invalid cucr-install-pip${pv}-now call: needs package as argument."
     fi
 
+    local user_arg
+    [[ -z "${VIRTUAL_ENV}" ]] && user_arg="--user"
+
     # Make sure pip is up-to-date before checking version and installing
     local pip_version desired_pip_version
-    pip_version=$(pip"${pv}" --version | awk '{print $2}')
-    desired_pip_version="20"
+    pip_version=$(python"${pv}" -m pip --version | awk '{print $2}')
+    desired_pip_version="22"
     if version_gt "$desired_pip_version" "$pip_version"
     then
         cucr-install-debug "pip${pv} not yet version >=$desired_pip_version, but $pip_version"
-        python"${pv}" -m pip install --user --upgrade pip
+        cucr-install-pipe python"${pv}" -m pip install ${user_arg} --upgrade pip
         hash -r
     else
         cucr-install-debug "Already pip${pv}>=$desired_pip_version"
     fi
 
-    local pips_to_check=""
-    local pips_to_install=""
-    local git_pips_to_install=""
+    local pips_to_check pips_to_check_w_options pips_to_install pips_to_install_w_options git_pips_to_install
     # shellcheck disable=SC2048
     for pkg in $*
     do
@@ -948,17 +1128,98 @@ function _cucr-install-pip-now
         then
             git_pips_to_install="$git_pips_to_install $pkg"
         else
-            pips_to_check="$pips_to_check $pkg"
+            read -r -a pkg_split <<< "${pkg//^/ }"
+            if [ ${#pkg_split[@]} -gt 1 ]
+            then
+                pips_to_check_w_options="$pips_to_check_w_options $pkg"
+            else
+                pips_to_check="$pips_to_check $pkg"
+            fi
         fi
     done
 
-    read -r -a pips_to_check <<< "$pips_to_check"
-    local installed_versions
-    installed_versions=$(python"${pv}" "$CUCR_INSTALL_SCRIPTS_DIR"/check-pip-pkg-installed-version.py "${pips_to_check[@]}")
-    local error_code=$?
-    if [ "$error_code" -gt 1 ]
+    if [ -n "$pips_to_check" ]
     then
-        cucr-install-error "cucr-install-pip${pv}-now: $installed_versions"
+        local indexes_to_install
+        # shellcheck disable=SC2086
+        _cucr-install-pip-check "$pv" $pips_to_check
+
+        read -r -a pips_to_check <<< "$pips_to_check"
+
+        for idx in $indexes_to_install
+        do
+            local pkg_req
+            pkg_req="${pips_to_check[$idx]}"
+            cucr-install-debug "Going to install $pkg_req"
+            pips_to_install="$pips_to_install $pkg_req"
+        done
+    fi
+
+    if [ -n "$pips_to_check_w_options" ]
+    then
+        local indexes_to_install pips_to_check_options_removed
+        for pkg in $pips_to_check_w_options
+        do
+            read -r -a pkg_split <<< "${pkg//^/ }"
+            pips_to_check_options_removed="$pips_to_check_options_removed ${pkg_split[0]}"
+        done
+        # shellcheck disable=SC2086
+        _cucr-install-pip-check "$pv" $pips_to_check_options_removed
+
+        read -r -a pips_to_check_w_options <<< "$pips_to_check_w_options"
+
+        for idx in $indexes_to_install
+        do
+            local pkg_req
+            pkg_req="${pips_to_check_w_options[$idx]}"
+            cucr-install-debug "Going to install $pkg_req"
+            pips_to_install_w_options="$pips_to_install_w_options $pkg_req"
+        done
+    fi
+
+    if [ -n "$pips_to_install" ]
+    then
+        # shellcheck disable=SC2048,SC2086
+        cucr-install-pipe python"${pv}" -m pip install ${user_arg} $pips_to_install <<< yes || cucr-install-error "An error occurred while installing pip${pv} packages."
+    fi
+
+    if [ -n "$pips_to_install_w_options" ]
+    then
+        for pkg in $pips_to_install_w_options
+        do
+            # shellcheck disable=SC2048,SC2086
+            cucr-install-pipe python"${pv}" -m pip install ${user_arg} ${pkg//^/ } <<< yes || cucr-install-error "An error occurred while installing pip${pv} packages with options."
+        done
+    fi
+
+    if [ -n "$git_pips_to_install" ]
+    then
+        for pkg in $git_pips_to_install
+        do
+            # shellcheck disable=SC2048,SC2086
+            cucr-install-pipe python"${pv}" -m pip install ${user_arg} ${pkg} <<< yes || cucr-install-error "An error occurred while installing pip${pv} git packages."
+        done
+    fi
+}
+
+function _cucr-install-pip-check
+{
+    cucr-install-debug "_cucr-install-pip-check $*"
+    local pv
+    pv=$1
+    shift
+
+    local pips_to_check installed_versions
+    pips_to_check=("$@")
+    if [ ${#pips_to_check[@]} -gt 0 ]
+    then
+        local error_code
+        installed_versions=$(python"${pv}" "$CUCR_INSTALL_SCRIPTS_DIR"/check-pip-pkg-installed-version.py "${pips_to_check[@]}")
+        error_code=$?
+        if [ "$error_code" -gt 1 ]
+        then
+            cucr-install-error "_cucr-install-pip${pv}-check: $installed_versions"
+        fi
     fi
     read -r -a installed_versions <<< "$installed_versions"
 
@@ -969,56 +1230,23 @@ function _cucr-install-pip-now
 
     for idx in "${!pips_to_check[@]}"
     do
-        local pkg_req="${pips_to_check[$idx]}"
-        local pkg_installed="${installed_versions[$idx]}"
+        local pkg_req pkg_installed
+        pkg_req="${pips_to_check[$idx]}"
+        pkg_installed="${installed_versions[$idx]}"
         pkg_installed="${pkg_installed//^/ }"
         if [[ "$error_code" -eq 1 && "$pkg_installed" == "None" ]]
         then
-            pips_to_install="$pips_to_install $pkg_req"
+            indexes_to_install="$indexes_to_install $idx"  # indexes_to_install is a "global" variable from cucr-install-pip-now
         else
             cucr-install-debug "$pkg_req is already installed, $pkg_installed"
         fi
     done
-
-    if [ -n "$pips_to_install" ]
-    then
-        echo -e "Going to run the following command:\n"
-        echo -e "yes | python${pv} -m pip install --user $pips_to_install\n"
-        # shellcheck disable=SC2048,SC2086
-        yes | python"${pv}" -m pip install --user $pips_to_install || cucr-install-error "An error occurred while installing pip${pv} packages."
-    fi
-
-    if [ -n "$git_pips_to_install" ]
-    then
-        for pkg in $git_pips_to_install
-        do
-            echo -e "Going to run the following command:\n"
-            echo -e "yes | python${pv} -m pip install --user $pkg\n"
-            # shellcheck disable=SC2048,SC2086
-            yes | python"${pv}" -m pip install --user $pkg || cucr-install-error "An error occurred while installing pip${pv} packages."
-        done
-    fi
 }
 
 # Needed for backward compatibility
 function cucr-install-pip-now
 {
-	if [ "$CUCR_ROS_DISTRO" == "noetic" ]
-	then
-	    _cucr-install-pip-now "3" "$@"
-	else
-	    _cucr-install-pip-now "2" "$@"
-	fi
-}
-
-function cucr-install-pip2-now
-{
-	if [ "$CUCR_ROS_DISTRO" == "noetic" ]
-	then
-	    _cucr-install-pip-now "3" "$@"
-	else
-	    _cucr-install-pip-now "2" "$@"
-	fi
+    _cucr-install-pip-now "3" "$@"
 }
 
 function cucr-install-pip3-now
@@ -1054,7 +1282,6 @@ function cucr-install-snap-now
     cucr-install-system-now snapd
 
     local snaps_to_install snaps_installed
-    snaps_to_install=""
     snaps_installed=$(snap list)
     # shellcheck disable=SC2048
     for pkg in $*
@@ -1070,13 +1297,58 @@ function cucr-install-snap-now
 
     if [ -n "$snaps_to_install" ]
     then
-        echo -e "Going to run the following command:\n"
         for pkg in $snaps_to_install
         do
-            echo -e "yes | sudo snap install --classic $pkg\n"
-            cucr-install-debug "yes | sudo snap install --classic $pkg"
-            yes | sudo snap install --classic "$pkg" || cucr-install-error "An error occurred while installing snap packages."
+            cucr-install-pipe sudo snap install --classic "$pkg" <<< yes || cucr-install-error "An error occurred while installing snap packages."
         done
+    fi
+}
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function cucr-install-gem
+{
+    cucr-install-debug "cucr-install-gem $*"
+
+    if [ -z "$1" ]
+    then
+        cucr-install-error "Invalid cucr-install-gem call: needs package as argument."
+    fi
+    cucr-install-debug "Adding $1 to gem list"
+    CUCR_INSTALL_GEMS="$1 $CUCR_INSTALL_GEMS"
+}
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+function cucr-install-gem-now
+{
+    cucr-install-debug "cucr-install-gem-now $*"
+
+    if [ -z "$1" ]
+    then
+        cucr-install-error "Invalid cucr-install-gem-now call: needs package as argument."
+    fi
+
+    cucr-install-system-now ruby ruby-dev rubygems-integration
+
+    local gems_to_install gems_installed
+    gems_installed=$(gem list)
+    # shellcheck disable=SC2048
+    for pkg in $*
+    do
+        if [[ ! $gems_installed == *$pkg* ]] # Check if pkg is not already installed
+        then
+            gems_to_install="$gems_to_install $pkg"
+            cucr-install-debug "gem pkg: $pkg is not yet installed"
+        else
+            cucr-install-debug "gems pkg: $pkg is already installed"
+        fi
+    done
+
+    if [ -n "$gems_to_install" ]
+    then
+        # shellcheck disable=SC2086
+        cucr-install-pipe sudo gem install $gems_to_install || cucr-install-error "An error occurred while installing gem packages." #<<< yes
     fi
 }
 
@@ -1099,10 +1371,8 @@ function cucr-install-dpkg
     then
         cucr-install-error "Invalid cucr-install-dpkg call: needs package as argument."
     fi
-    cucr-install-debug "Installing dpkg $1"
-    sudo dpkg --install "$1"
-    cucr-install-debug "sudo apt-get --fix-broken --assume-yes -q install"
-    sudo apt-get --fix-broken --assume-yes -q install
+    cucr-install-pipe sudo dpkg --install "$1"
+    cucr-install-pipe sudo apt-get --fix-broken --assume-yes -q install || cucr-install-error "An error occured while fixing dpkg install"
 }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -1111,16 +1381,17 @@ function cucr-install-ros
 {
     cucr-install-debug "cucr-install-ros $*"
 
-    local install_type=$1
-    local src=$2
-    local sub_dir=$3
-    local version=$4
+    local install_type src
+    install_type=$1
+    src=$2
 
     cucr-install-debug "Installing ros package: type: $install_type, source: $src"
 
     [ -n "$CUCR_ROS_DISTRO" ] || cucr-install-error "Environment variable 'CUCR_ROS_DISTRO' is not set."
+    [ -n "$CUCR_ROS_VERSION" ] || cucr-install-error "Environment variable 'CUCR_ROS_VERSION' is not set."
 
-    local ros_pkg_name=${CUCR_INSTALL_CURRENT_TARGET#ros-}
+    local ros_pkg_name
+    ros_pkg_name=${CUCR_INSTALL_CURRENT_TARGET#ros-}
     if [[ $ros_pkg_name == *-* ]]
     then
         cucr-install-error "A ROS package cannot contain dashes (${ros_pkg_name}), make sure the package is named '${ros_pkg_name//-/_}' and rename the target to 'ros-${ros_pkg_name//-/_}'"
@@ -1128,76 +1399,65 @@ function cucr-install-ros
     fi
 
     # First of all, make sure ROS itself is installed
-    cucr-install-target ros || cucr-install-error "Failed to install target 'ROS'"
+    cucr-install-target ros"${CUCR_ROS_VERSION}" || cucr-install-error "Failed to install target 'ros${CUCR_ROS_VERSION}'"
 
-    if [ "$install_type" = "system" ]
+    if [ "$install_type" == "system" ]
     then
         cucr-install-debug "cucr-install-system ros-$CUCR_ROS_DISTRO-$src"
         cucr-install-system ros-"$CUCR_ROS_DISTRO"-"$src"
         return 0
     fi
 
-    if [ -z "$ROS_PACKAGE_INSTALL_DIR" ]
+    if [ "$install_type" != "git" ]
     then
-        cucr-install-error "Environment variable ROS_PACKAGE_INSTALL_DIR not set."
+        cucr-install-error "Unknown ros install type: '${install_type}'"
+    fi
+
+    local repos_dir version sub_dir
+    if [[ -n $3 ]]
+    then
+        for i in "${@:3}"
+        do
+            case $i in
+                --target-dir=* )
+                    repos_dir="${i#*=}"
+                    ;;
+
+                --version=* )
+                    version="${i#*=}"
+                    ;;
+
+                --sub-dir=* )
+                    sub_dir="${i#*=}"
+                    ;;
+
+                * )
+                    cucr-install-error "Unknown input variable ${i}"
+                    ;;
+            esac
+        done
     fi
 
     # Make sure the ROS package install dir exists
     cucr-install-debug "Creating ROS package install dir: $ROS_PACKAGE_INSTALL_DIR"
     mkdir -p "$ROS_PACKAGE_INSTALL_DIR"
 
-    local ros_pkg_dir="$ROS_PACKAGE_INSTALL_DIR"/"$ros_pkg_name"
-    local repos_dir
-    if [ "$install_type" = "git" ]
-    then
-        local output
-        output=$(_git_split_url "$src")
+    local ros_pkg_dir
+    ros_pkg_dir="$ROS_PACKAGE_INSTALL_DIR"/"$ros_pkg_name"
 
-        local array
-        read -r -a array <<< "$output"
-        local domain_name=${array[0]}
-        local repo_address=${array[1]}
-        repos_dir="$CUCR_REPOS_DIR"/"$domain_name"/"$repo_address"
-        ## temp; Move repo to new location
-        local repos_dir_old="$CUCR_REPOS_DIR"/"$src"
-        repos_dir_old=${repos_dir_old// /_}
-        repos_dir_old=${repos_dir_old//[^a-zA-Z0-9\/\.-]/_}
-        if [ -d "$repos_dir_old" ]
+    # If repos_dir is unset, try generating the default path from git url
+    if [[ -z "${repos_dir}" ]]
+    then
+        repos_dir=$(_git_url_to_repos_dir "${src}")
+        if [[ -z "${repos_dir}" ]]
         then
-            cucr-install-debug "mv $repos_dir_old $repos_dir"
-            mv "$repos_dir_old" "$repos_dir"
+            cucr-install-error "Could not create repos_dir path from the git url: '${src}'"
         fi
-        # temp; end
-    else
-        repos_dir="$CUCR_REPOS_DIR"/"$src"
-        # replace spaces with underscores
-        repos_dir=${repos_dir// /_}
-        # now, clean out anything that's not alphanumeric or an underscore
-        repos_dir=${repos_dir//[^a-zA-Z0-9\/\.-]/_}
     fi
 
-    # For backwards compatibility: if the ros_pkg_dir already exists and is NOT
-    # a symbolic link, then update this direcory instead of creating a symbolic
-    # link from the repos directory. In other words, the ros_pkg_dir becomes the
-    # repos_dir
-    if [[ -d $ros_pkg_dir && ! -L $ros_pkg_dir ]]
-    then
-        repos_dir=$ros_pkg_dir
-    fi
     cucr-install-debug "repos_dir: $repos_dir"
 
-    if [ "$install_type" = "git" ]
-    then
-        cucr-install-git "$src" "$repos_dir" "$version"
-    elif [ "$install_type" = "hg" ]
-    then
-        cucr-install-hg "$src" "$repos_dir" "$version"
-    elif [ "$install_type" = "svn" ]
-    then
-        cucr-install-svn "$src" "$repos_dir" "$version"
-    else
-        cucr-install-error "Unknown ros install type: '${install_type}'"
-    fi
+    cucr-install-git "$src" --target-dir="$repos_dir" --version="$version"
 
     if [ -d "$repos_dir" ]
     then
@@ -1216,10 +1476,15 @@ function cucr-install-ros
                 rm "$ros_pkg_dir"
                 ln -s "$repos_dir"/"$sub_dir" "$ros_pkg_dir"
             fi
-        elif [ ! -d "$ros_pkg_dir" ]
+        elif [ -d "$ros_pkg_dir" ]
+        then
+            cucr-install-error "Can not create a symlink at '$ros_pkg_dir' as it is a directory"
+        elif [ ! -e "$ros_pkg_dir" ]
         then
             # Create a symbolic link to the system workspace
             ln -s "$repos_dir"/"$sub_dir" "$ros_pkg_dir"
+        else
+            cucr-install-error "'$ros_pkg_dir' should not exist or be a symlink, any other option is incorrect"
         fi
 
         if [[ "$CUCR_INSTALL_SKIP_ROS_DEPS" != "all" ]]
@@ -1230,7 +1495,7 @@ function cucr-install-ros
                 # Catkin
                 cucr-install-debug "Parsing $pkg_xml"
                 local deps
-                deps=$("$CUCR_INSTALL_SCRIPTS_DIR"/parse-package-xml_cucr.py "$pkg_xml")
+                deps=$("$CUCR_INSTALL_SCRIPTS_DIR"/parse_package_xml.py "$pkg_xml")
                 cucr-install-debug "Parsed package.xml\n$deps"
 
                 for dep in $deps
@@ -1261,9 +1526,8 @@ function _missing_targets_check
     cucr-install-debug "_missing_targets_check $*"
 
     # Check if valid target received as input
-    local targets="$1"
-    local missing_targets=""
-    local target
+    local targets missing_targets target
+    targets="$1"
 
     for target in $targets
     do
@@ -1318,14 +1582,17 @@ do
             export CUCR_INSTALL_TEST_DEPEND="false"
             ;;
         --branch*)
+            echo "Usage of --branch is deprecated, switch to --try-branch"
+            ;;&
+        --try-branch* | --branch*)
             # shellcheck disable=SC2001
-            BRANCH=$(echo "$1" | sed -e 's/^[^=]*=//g')
+            BRANCH="$(echo "$1" | sed -e 's/^[^=]*=//g')${BRANCH:+ ${BRANCH}}"  # Reverse order, so we try last one first
             ;;
         --*)
             echo "unknown option $1"
             ;;
         *)
-            targets="$targets $1"
+            targets="${targets:+${targets} }$1"
             ;;
     esac
     shift
@@ -1355,30 +1622,20 @@ CUCR_INSTALL_STATE_DIR=$CUCR_INSTALL_GENERAL_STATE_DIR/$stamp
 mkdir -p "$CUCR_INSTALL_STATE_DIR"
 
 CUCR_INSTALL_GIT_PULL_Q=()
-CUCR_INSTALL_HG_PULL_Q=()
 
 CUCR_INSTALL_SYSTEMS=
 CUCR_INSTALL_PPA=
-CUCR_INSTALL_PIP2S=
 CUCR_INSTALL_PIP3S=
 CUCR_INSTALL_SNAPS=
+CUCR_INSTALL_GEMS=
 
 CUCR_INSTALL_WARNINGS=
 CUCR_INSTALL_INFOS=
 
 # Make sure tools used by this installer are installed
-# Needed for mercurial install:
-# gcc, python-dev, python-docutils, python-pkg-resources, python-setuptools, python-wheel
-if [ "$CUCR_ROS_DISTRO" == "noetic" ]
-then
-    cucr-install-system-now git gcc \
-    python3-pip python3-dev python3-docutils python3-pkg-resources python3-setuptools python3-wheel
-else
-    cucr-install-system-now git gcc python-pip python-dev python-docutils python-pkg-resources python-setuptools python-wheel \
-    python3-pip python3-dev python3-docutils python3-pkg-resources python3-setuptools python3-wheel
-fi
+cucr-install-system-now curl git jq python-is-python3 python3-pip wget
 
-cucr-install-pip3-now catkin-pkg PyYAML "mercurial>=5.3"
+cucr-install-pip3-now catkin-pkg PyYAML
 
 
 # Handling of targets
@@ -1430,7 +1687,7 @@ fi
 # Display warnings
 if [ -n "$CUCR_INSTALL_WARNINGS" ]
 then
-    echo -e "\033[33;5;1m\nOverview of warnings:\n\n$CUCR_INSTALL_WARNINGS\033[0m"
+    echo -e "\e[33;1m\nOverview of warnings:\n\n$CUCR_INSTALL_WARNINGS\e[0m"
 fi
 
 
@@ -1458,16 +1715,6 @@ then
 fi
 
 
-# Installing all python2 (pip2) targets, which are collected during the install
-if [ -n "$CUCR_INSTALL_PIP2S" ]
-then
-    CUCR_INSTALL_CURRENT_TARGET="PIP2"
-
-    cucr-install-debug "calling: cucr-install-pip2-now $CUCR_INSTALL_PIP2S"
-    cucr-install-pip2-now "$CUCR_INSTALL_PIP2S"
-fi
-
-
 # Installing all python3 (pip3) targets, which are collected during the install
 if [ -n "$CUCR_INSTALL_PIP3S" ]
 then
@@ -1487,8 +1734,17 @@ then
     cucr-install-snap-now "$CUCR_INSTALL_SNAPS"
 fi
 
+# Installing all gem targets, which are collected during the install
+if [ -n "$CUCR_INSTALL_GEMS" ]
+then
+    CUCR_INSTALL_CURRENT_TARGET="GEM"
+
+    cucr-install-debug "calling: cucr-install-gem-now $CUCR_INSTALL_GEMS"
+    cucr-install-gem-now "$CUCR_INSTALL_GEMS"
+fi
+
 CUCR_INSTALL_CURRENT_TARGET="main-loop"
 
-cucr-install-debug "Installer completed succesfully"
+cucr-install-echo "Installer completed succesfully"
 
 return 0
