@@ -146,8 +146,8 @@ function main
     esac
 
     # Script variables
-    env_url="git@github.com:juandhv/tue-env.git"
-    { [[ -n "${targets_repo}" ]] && env_targets_url="${targets_repo}"; } || env_targets_url="git@github.com:juandhv/tue-env-targets.git"
+    env_url="git@github.com:CardiffUniversityComputationalRobotics/tue-env.git"
+    { [[ -n "${targets_repo}" ]] && env_targets_url="${targets_repo}"; } || env_targets_url="git@github.com:CardiffUniversityComputationalRobotics/tue-env-targets.git"
     [[ -n "${create_virtualenv}" ]] || create_virtualenv="true"
     env_dir="${HOME}/.cucr"
     workspace="ros-${CUCR_ROS_DISTRO}"
