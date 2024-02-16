@@ -2,7 +2,8 @@
 
 function _function_test
 {
-    local function_missing="false"
+    local function_missing
+    function_missing="false"
     # shellcheck disable=SC2048
     for func in $*
     do

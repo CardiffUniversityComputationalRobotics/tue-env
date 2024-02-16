@@ -2,7 +2,8 @@
 
 function _function_test
 {
-    local function_missing="false"
+    local function_missing
+    function_missing="false"
     # shellcheck disable=SC2048
     for func in $*
     do
@@ -23,7 +24,7 @@ mkdir -p "$CUCR_INSTALL_INSTALLED_DIR"
 
 CUCR_INSTALL_TARGETS_DIR=$CUCR_ENV_TARGETS_DIR
 
-CUCR_REPOS_DIR=/tmp/cucr_get_apt_get_updated
+TUE_APT_GET_UPDATED_FILE=/tmp/tue_get_apt_get_updated
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
