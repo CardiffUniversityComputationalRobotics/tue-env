@@ -88,3 +88,9 @@ then
     # shellcheck disable=SC1090
     source "${CUCR_ENV_DIR}"/.venv/"${CUCR_ENV}"/bin/activate
 fi
+
+if [ -f "$CUCR_ENV_DIR"/.env/setup/target_setup.bash ]
+then
+    # shellcheck disable=SC1091
+    source "$CUCR_ENV_DIR"/.env/setup/target_setup.bash
+fi
