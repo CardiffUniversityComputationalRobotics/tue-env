@@ -1334,7 +1334,7 @@ function cucr-deb-generate
     for package in $packages_list
     do
         local pkg_rel_dir
-        pkg_rel_dir="$("${CUCR_DIR}"/installer/generate_deb_control.py "${CUCR_RELEASE_DIR}" "${CUCR_SYSTEM_DIR}"/src/"${package}"/package.xml "${timestamp}")"
+        pkg_rel_dir="$("${CUCR_DIR}"/installer/generate_deb_control_cucr.py "${CUCR_RELEASE_DIR}" "${CUCR_SYSTEM_DIR}"/src/"${package}"/package.xml "${timestamp}")"
 
 
         if [[ ! -d "${pkg_rel_dir}" ]]

@@ -2,7 +2,7 @@
 
 function conditional_apt_update
 {
-    CUCR_APT_GET_UPDATED_FILE=/tmp/tue_get_apt_get_updated
+    CUCR_APT_GET_UPDATED_FILE=/tmp/cucr_get_apt_get_updated
     if [[ ! -f ${CUCR_APT_GET_UPDATED_FILE} ]]
     then
         echo "[tue-env](bootstrap) sudo apt-get update -qq"
