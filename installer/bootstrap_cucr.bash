@@ -139,8 +139,31 @@ function main
                 echo "[cucr-env](bootstrap) Using default ROS_DISTRO '${CUCR_ROS_DISTRO}' with ROS_VERSION '${CUCR_ROS_VERSION}'"
             fi
             ;;
+        "24.04")
+            if [[ -n "${ros_version}" ]] && [[ "${ros_version}" -ne 2 ]]
+            then
+                 echo "[cucr-env](bootstrap) Error! Only ROS version 2 is supported with ubuntu 22.04 and newer"
+                 return 1
+            fi
+            CUCR_ROS_VERSION=2
+
+            if [[ "${ros_distro}" == "jazzy" ]]
+            then
+                CUCR_ROS_DISTRO="jazzy"
+            elif [[ "${ros_distro}" == "rolling" ]]
+            then
+                CUCR_ROS_DISTRO="rolling"
+            elif [[ -n "${ros_distro}" ]]
+            then
+                echo "[cucr-env](bootstrap) Error! ROS ${ros_distro} is unsupported with cucr-env."
+                return 1
+            else
+                CUCR_ROS_DISTRO="jazzy"
+                echo "[cucr-env](bootstrap) Using default ROS_DISTRO '${CUCR_ROS_DISTRO}' with ROS_VERSION '${CUCR_ROS_VERSION}'"
+            fi
+            ;;
         *)
-            echo "[cucr-env](bootstrap) Ubuntu ${DISTRIB_RELEASE} is unsupported. Please use one of Ubuntu 20.04 or 22.04."
+            echo "[cucr-env](bootstrap) Ubuntu ${DISTRIB_RELEASE} is unsupported. Please use one of Ubuntu 20.04, 22.04 or 24.04."
             return 1
             ;;
     esac
